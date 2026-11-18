@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  calidad:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: trueque
+          POSTGRES_PASSWORD: trueque
+          POSTGRES_DB: trueque
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U trueque -d trueque"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trueque:trueque@localhost:5432/trueque?schema=public
+      JWT_ACCESS_SECRET: ci-access
+      JWT_REFRESH_SECRET: ci-refresh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run build:shared
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Migraciones y pruebas e2e del API
+        working-directory: apps/api
+        run: |
+          npx prisma migrate deploy
+          npm run test:e2e

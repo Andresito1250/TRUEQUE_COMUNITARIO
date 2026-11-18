@@ -1,0 +1,437 @@
+// Modelo de datos de Trueque Comunitario.
+// Basado en el diagrama de clases (Figura 1) y en docs/plan.md §2.
+// Las columnas geográficas (PostGIS) se declaran como Unsupported y se leen/escriben con SQL crudo.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis, unaccent]
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Localidad {
+  SUBA
+  KENNEDY
+  TEUSAQUILLO
+}
+
+enum Rol {
+  CIUDADANO
+  ADMIN
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  SUSPENDIDO
+  ELIMINADO
+}
+
+enum TipoCodigo {
+  VERIFICAR_CORREO
+  RECUPERAR_CONTRASENA
+}
+
+enum TipoPublicacion {
+  BIEN
+  SERVICIO
+}
+
+enum EstadoConservacion {
+  NUEVO
+  COMO_NUEVO
+  BUENO
+  ACEPTABLE
+  NO_APLICA
+}
+
+enum EstadoPublicacion {
+  DISPONIBLE
+  RESERVADA
+  INTERCAMBIADA
+  OCULTA
+  ELIMINADA
+}
+
+enum EstadoPropuesta {
+  PROPUESTA_CREADA
+  PENDIENTE_RESPUESTA
+  CONTRAPROPUESTA
+  RECHAZADA
+  CANCELADA
+  ACEPTADA
+  ENCUENTRO_ACORDADO
+  ESPERANDO_CONFIRMACION
+  INTERCAMBIO_CONFIRMADO
+  CALIFICACION_HABILITADA
+  FINALIZADO
+}
+
+enum LadoArticulo {
+  OFRECIDO
+  SOLICITADO
+}
+
+enum TipoPuntoEncuentro {
+  CENTRO_COMERCIAL
+  BIBLIOTECA
+  ESTACION
+  PARQUE
+  OTRO
+}
+
+enum EstadoMensaje {
+  ENVIADO
+  LEIDO
+}
+
+enum TipoNotificacion {
+  PROPUESTA_NUEVA
+  PROPUESTA_RESPONDIDA
+  CONTRAPROPUESTA
+  ENCUENTRO_ACORDADO
+  TRUEQUE_CANCELADO
+  TRUEQUE_REALIZADO
+  MENSAJE_NUEVO
+  CALIFICACION_RECIBIDA
+  MODERACION
+}
+
+enum Plataforma {
+  ANDROID
+  IOS
+}
+
+enum MotivoReporte {
+  PROHIBIDO
+  FRAUDE
+  OFENSIVO
+  SPAM
+  ACOSO
+  OTRO
+}
+
+enum EstadoReporte {
+  PENDIENTE
+  REVISADO
+  RESUELTO
+}
+
+enum DecisionReporte {
+  APROBAR
+  OCULTAR
+  ELIMINAR
+  SUSPENDER_USUARIO
+}
+
+// ───────────────────────────── Usuarios y autenticación (Módulo 1) ─────────────────────────────
+
+model Usuario {
+  id                   String        @id @default(uuid()) @db.Uuid
+  nombre               String        @db.VarChar(80)
+  correo               String        @unique @db.VarChar(254)
+  contrasenaHash       String
+  localidad            Localidad
+  fotoUrl              String?
+  descripcion          String?       @db.VarChar(500)
+  /// Dato de contacto privado: nunca se expone a otros usuarios (RF-20).
+  telefonoContacto     String?       @db.VarChar(20)
+  rol                  Rol           @default(CIUDADANO)
+  estado               EstadoUsuario @default(ACTIVO)
+  correoVerificado     Boolean       @default(false)
+  totpSecret           String?
+  totpActivo           Boolean       @default(false)
+  politicaDatosVersion String
+  politicaDatosFecha   DateTime
+  terminosVersion      String
+  terminosFecha        DateTime
+  /// Ubicación aproximada (ofuscada) del usuario.
+  ubicacion            Unsupported("geography(Point,4326)")?
+  creadoEn             DateTime      @default(now())
+  actualizadoEn        DateTime      @updatedAt
+  eliminadoEn          DateTime?
+
+  categoriasInteres     UsuarioCategoriaInteres[]
+  codigos               CodigoVerificacion[]
+  refreshTokens         RefreshToken[]
+  publicaciones         Publicacion[]
+  propuestasEnviadas    PropuestaTrueque[]        @relation("Proponente")
+  propuestasRecibidas   PropuestaTrueque[]        @relation("Receptor")
+  intercambiosConfirmados Intercambio[]           @relation("ConfirmadoPor")
+  mensajes              Mensaje[]
+  notificaciones        Notificacion[]
+  dispositivos          DispositivoPush[]
+  calificacionesHechas  Calificacion[]            @relation("Calificador")
+  calificacionesRecibidas Calificacion[]          @relation("Calificado")
+  reportesHechos        Reporte[]                 @relation("Reportante")
+  reportesRecibidos     Reporte[]                 @relation("UsuarioReportado")
+  reportesModerados     Reporte[]                 @relation("AdminModerador")
+  auditoria             RegistroAuditoria[]
+
+  @@index([localidad])
+  @@index([estado])
+  @@index([ubicacion], type: Gist)
+}
+
+model UsuarioCategoriaInteres {
+  usuarioId   String    @db.Uuid
+  categoriaId Int
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, categoriaId])
+}
+
+model CodigoVerificacion {
+  id         String     @id @default(uuid()) @db.Uuid
+  usuarioId  String     @db.Uuid
+  tipo       TipoCodigo
+  codigoHash String
+  expiraEn   DateTime
+  intentos   Int        @default(0)
+  usadoEn    DateTime?
+  creadoEn   DateTime   @default(now())
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, tipo])
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  usuarioId   String    @db.Uuid
+  tokenHash   String    @unique
+  expiraEn    DateTime
+  revocadoEn  DateTime?
+  dispositivo String?   @db.VarChar(120)
+  creadoEn    DateTime  @default(now())
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
+
+// ───────────────────────────── Publicaciones (Módulos 2 y 3) ─────────────────────────────
+
+model Categoria {
+  id            Int                       @id @default(autoincrement())
+  nombre        String                    @unique @db.VarChar(60)
+  icono         String?                   @db.VarChar(40)
+  activa        Boolean                   @default(true)
+  publicaciones Publicacion[]
+  interesados   UsuarioCategoriaInteres[]
+}
+
+model Publicacion {
+  id                 String             @id @default(uuid()) @db.Uuid
+  titulo             String             @db.VarChar(80)
+  descripcion        String             @db.VarChar(1000)
+  tipo               TipoPublicacion
+  estadoConservacion EstadoConservacion
+  estado             EstadoPublicacion  @default(DISPONIBLE)
+  localidad          Localidad
+  /// Ubicación ofuscada (≤ 300 m) para proteger la privacidad del oferente (RF-12).
+  ubicacion          Unsupported("geography(Point,4326)")?
+  usuarioId          String             @db.Uuid
+  categoriaId        Int
+  fechaPublicacion   DateTime           @default(now())
+  actualizadoEn      DateTime           @updatedAt
+
+  usuario            Usuario             @relation(fields: [usuarioId], references: [id])
+  categoria          Categoria           @relation(fields: [categoriaId], references: [id])
+  imagenes           ImagenPublicacion[]
+  propuestasObjetivo PropuestaTrueque[]  @relation("PublicacionObjetivo")
+  enPropuestas       PropuestaArticulo[]
+  reportes           Reporte[]
+
+  @@index([estado, fechaPublicacion])
+  @@index([usuarioId])
+  @@index([categoriaId])
+  @@index([localidad])
+  @@index([ubicacion], type: Gist)
+}
+
+model ImagenPublicacion {
+  id            String      @id @default(uuid()) @db.Uuid
+  publicacionId String      @db.Uuid
+  url           String
+  miniaturaUrl  String
+  orden         Int         @db.SmallInt
+  publicacion   Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  @@unique([publicacionId, orden])
+}
+
+// ───────────────────────────── Trueque (Módulo 4) ─────────────────────────────
+
+model PropuestaTrueque {
+  id                    String          @id @default(uuid()) @db.Uuid
+  estado                EstadoPropuesta @default(PENDIENTE_RESPUESTA)
+  mensaje               String?         @db.VarChar(500)
+  publicacionObjetivoId String          @db.Uuid
+  proponenteId          String          @db.Uuid
+  receptorId            String          @db.Uuid
+  /// Propuesta original cuando esta es una contrapropuesta.
+  propuestaPadreId      String?         @unique @db.Uuid
+  /// Motivo de cierre automático (p. ej. "El artículo ya fue intercambiado").
+  motivoCierre          String?         @db.VarChar(200)
+  creadoEn              DateTime        @default(now())
+  actualizadoEn         DateTime        @updatedAt
+
+  publicacionObjetivo Publicacion         @relation("PublicacionObjetivo", fields: [publicacionObjetivoId], references: [id])
+  proponente          Usuario             @relation("Proponente", fields: [proponenteId], references: [id])
+  receptor            Usuario             @relation("Receptor", fields: [receptorId], references: [id])
+  propuestaPadre      PropuestaTrueque?   @relation("Contrapropuesta", fields: [propuestaPadreId], references: [id])
+  contrapropuesta     PropuestaTrueque?   @relation("Contrapropuesta")
+  articulos           PropuestaArticulo[]
+  intercambio         Intercambio?
+  mensajes            Mensaje[]
+
+  @@index([proponenteId, estado])
+  @@index([receptorId, estado])
+  @@index([publicacionObjetivoId, estado])
+}
+
+model PropuestaArticulo {
+  propuestaId   String           @db.Uuid
+  publicacionId String           @db.Uuid
+  lado          LadoArticulo
+  propuesta     PropuestaTrueque @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  publicacion   Publicacion      @relation(fields: [publicacionId], references: [id])
+
+  @@id([propuestaId, publicacionId])
+  @@index([publicacionId])
+}
+
+model PuntoEncuentro {
+  id           Int                @id @default(autoincrement())
+  nombre       String             @db.VarChar(120)
+  tipo         TipoPuntoEncuentro
+  localidad    Localidad
+  direccion    String?            @db.VarChar(160)
+  ubicacion    Unsupported("geography(Point,4326)")
+  activo       Boolean            @default(true)
+  intercambios Intercambio[]
+
+  @@index([localidad])
+  @@index([ubicacion], type: Gist)
+}
+
+model Intercambio {
+  id                String           @id @default(uuid()) @db.Uuid
+  propuestaId       String           @unique @db.Uuid
+  fechaHoraEncuentro DateTime
+  puntoEncuentroId  Int?
+  puntoTexto        String           @db.VarChar(160)
+  /// Basta con que una de las partes marque el trueque como hecho (decisión del equipo, ver docs/plan.md §3).
+  confirmadoPorId   String?          @db.Uuid
+  fechaConfirmacion DateTime?
+  creadoEn          DateTime         @default(now())
+  actualizadoEn     DateTime         @updatedAt
+
+  propuesta      PropuestaTrueque @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  puntoEncuentro PuntoEncuentro?  @relation(fields: [puntoEncuentroId], references: [id])
+  confirmadoPor  Usuario?         @relation("ConfirmadoPor", fields: [confirmadoPorId], references: [id])
+  calificaciones Calificacion[]
+}
+
+// ───────────────────────────── Comunicación (Módulo 5) ─────────────────────────────
+
+model Mensaje {
+  id          String           @id @default(uuid()) @db.Uuid
+  propuestaId String           @db.Uuid
+  emisorId    String           @db.Uuid
+  contenido   String           @db.VarChar(1000)
+  estado      EstadoMensaje    @default(ENVIADO)
+  fechaHora   DateTime         @default(now())
+  propuesta   PropuestaTrueque @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+  emisor      Usuario          @relation(fields: [emisorId], references: [id])
+
+  @@index([propuestaId, fechaHora])
+}
+
+model Notificacion {
+  id        String           @id @default(uuid()) @db.Uuid
+  usuarioId String           @db.Uuid
+  tipo      TipoNotificacion
+  titulo    String           @db.VarChar(120)
+  mensaje   String           @db.VarChar(300)
+  /// Datos para navegar al tocar la notificación, p. ej. { "ruta": "/propuesta/123" }.
+  datos     Json?
+  leida     Boolean          @default(false)
+  fechaHora DateTime         @default(now())
+  usuario   Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, leida, fechaHora])
+}
+
+/// Reservado para push real cuando se use un development build (RF-21, mejora opcional).
+model DispositivoPush {
+  id         String     @id @default(uuid()) @db.Uuid
+  usuarioId  String     @db.Uuid
+  token      String     @unique
+  plataforma Plataforma
+  creadoEn   DateTime   @default(now())
+  usuario    Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+// ───────────────────────────── Confianza y reputación (Módulo 6) ─────────────────────────────
+
+model Calificacion {
+  id            String      @id @default(uuid()) @db.Uuid
+  intercambioId String      @db.Uuid
+  calificadorId String      @db.Uuid
+  calificadoId  String      @db.Uuid
+  puntuacion    Int         @db.SmallInt
+  comentario    String?     @db.VarChar(300)
+  fecha         DateTime    @default(now())
+  intercambio   Intercambio @relation(fields: [intercambioId], references: [id], onDelete: Cascade)
+  calificador   Usuario     @relation("Calificador", fields: [calificadorId], references: [id])
+  calificado    Usuario     @relation("Calificado", fields: [calificadoId], references: [id])
+
+  @@unique([intercambioId, calificadorId])
+  @@index([calificadoId])
+}
+
+model Reporte {
+  id                 String           @id @default(uuid()) @db.Uuid
+  reportanteId       String           @db.Uuid
+  publicacionId      String?          @db.Uuid
+  usuarioReportadoId String?          @db.Uuid
+  motivo             MotivoReporte
+  detalle            String?          @db.VarChar(500)
+  estado             EstadoReporte    @default(PENDIENTE)
+  decision           DecisionReporte?
+  adminId            String?          @db.Uuid
+  creadoEn           DateTime         @default(now())
+  resueltoEn         DateTime?
+
+  reportante       Usuario      @relation("Reportante", fields: [reportanteId], references: [id])
+  publicacion      Publicacion? @relation(fields: [publicacionId], references: [id])
+  usuarioReportado Usuario?     @relation("UsuarioReportado", fields: [usuarioReportadoId], references: [id])
+  admin            Usuario?     @relation("AdminModerador", fields: [adminId], references: [id])
+
+  @@index([estado, creadoEn])
+}
+
+// ───────────────────────────── Administración (Módulo 7) ─────────────────────────────
+
+/// Trazabilidad de intercambios, reportes y moderación (RNF10).
+model RegistroAuditoria {
+  id        String   @id @default(uuid()) @db.Uuid
+  accion    String   @db.VarChar(60)
+  actorId   String?  @db.Uuid
+  entidad   String   @db.VarChar(40)
+  entidadId String   @db.VarChar(64)
+  detalle   Json?
+  fecha     DateTime @default(now())
+  actor     Usuario? @relation(fields: [actorId], references: [id])
+
+  @@index([entidad, entidadId])
+  @@index([fecha])
+}

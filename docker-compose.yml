@@ -1,0 +1,44 @@
+# Infraestructura local de desarrollo. Uso: npm run infra:up
+name: trueque
+
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trueque
+      POSTGRES_PASSWORD: trueque
+      POSTGRES_DB: trueque
+    ports:
+      - '5433:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/db/10_postgis.sh:/docker-entrypoint-initdb.d/10_postgis.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U trueque -d trueque']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Almacenamiento de imágenes compatible con S3 (sustituye a MinIO, que dejó de publicar imágenes Docker).
+  # Sin identidades configuradas, en local acepta cualquier credencial.
+  s3:
+    image: chrislusf/seaweedfs:4.54
+    restart: unless-stopped
+    command: 'server -dir=/data -s3 -s3.port=8333 -master.volumeSizeLimitMB=256'
+    ports:
+      - '8333:8333'
+    volumes:
+      - s3-data:/data
+
+  # Bandeja de correo local: http://localhost:8025
+  mail:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+volumes:
+  db-data:
+  s3-data:

@@ -1,0 +1,30 @@
+{
+  "name": "trueque-comunitario",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototipo de app móvil de trueque comunitario para Bogotá (trabajo de grado UMB 2026)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "build:shared": "npm run build -w @trueque/shared",
+    "dev:api": "npm run build:shared && npm run start:dev -w api",
+    "dev:mobile": "npm run build:shared && npm run start -w mobile",
+    "db:migrate": "npm run db:migrate -w api",
+    "db:seed": "npm run db:seed -w api",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run build:shared && npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
