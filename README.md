@@ -44,6 +44,9 @@ cp apps/api/.env.example apps/api/.env
 # 4. Migraciones de la base de datos
 npm run db:migrate
 
+# 4b. Datos iniciales: categorías y cuenta de administrador
+npm run db:seed
+
 # 5. API (http://localhost:3000)
 npm run dev:api
 
@@ -74,6 +77,12 @@ npm run dev:mobile
      `netsh advfirewall firewall add rule name="Trueque API" dir=in action=allow protocol=TCP localport=3000` (PowerShell como administrador).
    - Verifica que la red Wi-Fi esté marcada como **privada** en Windows.
    - Si la red bloquea conexiones entre dispositivos (redes universitarias), usa `npx expo start --tunnel` y expone el API con un túnel gratuito (por ejemplo `cloudflared tunnel --url http://localhost:3000`) definiendo `EXPO_PUBLIC_API_URL` en `apps/mobile/.env`.
+
+### Códigos de verificación en local
+
+En tu PC **los correos no llegan a Gmail ni a ningún buzón real**: los recibe Mailpit. Para ver el código de verificación o de recuperación de contraseña, abre **http://localhost:8025** en el navegador del PC.
+
+Cuenta de administrador creada por el seed (solo para desarrollo): `admin@trueque.local` / `Admin2026`.
 
 ### Limitaciones de Expo Go
 
