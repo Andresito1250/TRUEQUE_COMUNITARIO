@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 
 import { FontSize, MIN_TOUCH } from '@/constants/theme';
+import { useActividad } from '@/hooks/use-notificaciones';
 import { useTheme } from '@/hooks/use-theme';
 
 type Icono = ComponentProps<typeof Ionicons>['name'];
@@ -28,6 +29,9 @@ const PESTANAS: { name: string; titulo: string; icono: Icono; iconoActivo: Icono
 /** Barra inferior con las 5 pestañas definidas en §9 del prompt. */
 export default function TabsLayout() {
   const theme = useTheme();
+  const { data: actividad } = useActividad();
+  // Insignia de Trueques: propuestas por responder y mensajes sin leer.
+  const pendientes = (actividad?.recibidas ?? 0) + (actividad?.mensajesSinLeer ?? 0);
 
   return (
     <Tabs
@@ -46,7 +50,12 @@ export default function TabsLayout() {
           name={p.name}
           options={{
             title: p.titulo,
-            tabBarAccessibilityLabel: p.titulo,
+            tabBarAccessibilityLabel:
+              p.name === 'trueques' && pendientes
+                ? `${p.titulo}, ${pendientes} pendientes`
+                : p.titulo,
+            tabBarBadge: p.name === 'trueques' && pendientes ? pendientes : undefined,
+            tabBarBadgeStyle: { backgroundColor: theme.danger, color: theme.onPrimary },
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? p.iconoActivo : p.icono}

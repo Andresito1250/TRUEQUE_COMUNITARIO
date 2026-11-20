@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { AvisoUbicacion } from '@/components/busqueda/aviso-ubicacion';
 import { BarraBusqueda } from '@/components/busqueda/barra-busqueda';
@@ -10,8 +11,9 @@ import { Boton } from '@/components/ui/boton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { Pantalla } from '@/components/ui/pantalla';
 import { Texto } from '@/components/ui/texto';
-import { Spacing } from '@/constants/theme';
+import { MIN_TOUCH, Spacing } from '@/constants/theme';
 import { useBusqueda } from '@/hooks/use-busqueda';
+import { useActividad } from '@/hooks/use-notificaciones';
 import { useCategorias } from '@/hooks/use-perfil';
 import { useTheme } from '@/hooks/use-theme';
 import { mensajeDeError } from '@/lib/api';
@@ -40,9 +42,12 @@ export default function InicioScreen() {
 
   return (
     <Pantalla refrescar={{ activo: isRefetching, onRefrescar: () => void refetch() }}>
-      <Texto variante="titulo">
-        {usuario ? `¡Hola, ${usuario.nombre.split(' ')[0]}!` : 'Cerca de ti'}
-      </Texto>
+      <View style={styles.encabezado}>
+        <Texto variante="titulo" style={styles.flex}>
+          {usuario ? `¡Hola, ${usuario.nombre.split(' ')[0]}!` : 'Cerca de ti'}
+        </Texto>
+        <Campana />
+      </View>
       <BarraBusqueda valor="" onBuscar={() => undefined} onPress={irABuscar} />
 
       {categorias.length ? (
@@ -90,7 +95,50 @@ export default function InicioScreen() {
   );
 }
 
+/** RF-21: acceso a la bandeja con el número de avisos sin leer. */
+function Campana() {
+  const theme = useTheme();
+  const { data } = useActividad();
+  const n = data?.notificacionesSinLeer ?? 0;
+  return (
+    <Pressable
+      onPress={() => router.push('/notificaciones')}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={n ? `Notificaciones, ${n} sin leer` : 'Notificaciones'}
+      style={styles.campana}
+    >
+      <Ionicons
+        name={n ? 'notifications' : 'notifications-outline'}
+        size={28}
+        color={theme.primary}
+      />
+      {n ? (
+        <View style={[styles.insignia, { backgroundColor: theme.danger }]}>
+          <Texto variante="pequeno" negrita color="onPrimary">
+            {n > 9 ? '9+' : n}
+          </Texto>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  encabezado: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  campana: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  insignia: {
+    position: 'absolute',
+    top: 4,
+    right: 2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   seccion: { gap: Spacing.sm },
   cargando: { marginVertical: Spacing.xl },
 });

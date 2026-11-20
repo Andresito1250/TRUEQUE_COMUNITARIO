@@ -5,8 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { Colors } from '@/constants/theme';
+import { AvisoFlotante } from '@/components/aviso-flotante';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/query-client';
+import { useTiempoReal } from '@/hooks/use-tiempo-real';
 import { useSesion } from '@/store/sesion';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -80,6 +82,11 @@ export default function RootLayout() {
               name="publicacion/editar/[id]"
               options={{ headerShown: true, title: 'Editar publicación' }}
             />
+            <Stack.Screen name="chat/[id]" options={{ headerShown: true, title: 'Chat' }} />
+            <Stack.Screen
+              name="notificaciones"
+              options={{ headerShown: true, title: 'Notificaciones' }}
+            />
             <Stack.Screen
               name="propuesta/nueva"
               options={{ headerShown: true, title: 'Proponer trueque' }}
@@ -112,8 +119,16 @@ export default function RootLayout() {
             options={{ headerShown: true, title: 'Términos de uso' }}
           />
         </Stack>
+        {conSesion ? <AvisoFlotante /> : null}
+        <TiempoReal conSesion={conSesion} />
         <StatusBar style="auto" />
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+/** El socket necesita el QueryClient, por eso vive dentro del proveedor. */
+function TiempoReal({ conSesion }: { conSesion: boolean }) {
+  useTiempoReal(conSesion);
+  return null;
 }

@@ -52,6 +52,12 @@ export function configurarAuth(p: ProveedorAuth) {
   proveedor = p;
 }
 
+/** Acceso a la sesión para clientes que no usan pedir() (el socket de tiempo real). */
+export const sesionApi = {
+  access: () => proveedor?.obtenerAccess() ?? null,
+  renovar: () => proveedor?.renovar() ?? Promise.resolve(null),
+};
+
 type Opciones = Omit<RequestInit, 'body'> & {
   /** Cuerpo que se envía como JSON, o FormData para subir archivos. */
   cuerpo?: unknown;

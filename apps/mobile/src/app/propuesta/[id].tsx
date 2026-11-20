@@ -89,6 +89,17 @@ export default function PropuestaScreen() {
         </Seccion>
       ) : null}
 
+      {/* RF-20: el chat queda disponible para leer aunque el trueque termine. */}
+      <Boton
+        titulo={
+          p.acciones.includes('chatear')
+            ? `Escribir a ${p.contraparte.nombre.split(' ')[0]}`
+            : 'Ver la conversación'
+        }
+        variante="secundario"
+        onPress={() => router.push({ pathname: '/chat/[id]', params: { id: p.id } })}
+      />
+
       {p.encuentro ? <Encuentro p={p} /> : null}
 
       {p.contrapropuestaId ? (
