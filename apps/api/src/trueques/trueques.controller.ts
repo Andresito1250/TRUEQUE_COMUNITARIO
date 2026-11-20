@@ -3,6 +3,8 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   type Bandeja,
   bandejaSchema,
+  calificacionSchema,
+  type CalificacionDto,
   cancelarPropuestaSchema,
   type CancelarPropuestaDto,
   contrapropuestaSchema,
@@ -119,6 +121,16 @@ export class TruequesController {
     @Param('id', { schema: idSchema }) id: string,
   ): Promise<PropuestaDetalle> {
     return this.trueques.confirmar(id, u.id);
+  }
+
+  @Post('propuestas/:id/calificacion')
+  @ApiOperation({ summary: 'RF-22: calificar a la otra parte (1 a 5, dentro de 7 días)' })
+  calificar(
+    @UsuarioActual() u: UsuarioSesion,
+    @Param('id', { schema: idSchema }) id: string,
+    @Body({ schema: calificacionSchema }) dto: CalificacionDto,
+  ): Promise<PropuestaDetalle> {
+    return this.trueques.calificar(id, u.id, dto);
   }
 
   @Get('puntos-encuentro')

@@ -8,6 +8,7 @@ import {
   type AccionPropuesta,
   accionesPermitidas,
   type Bandeja,
+  type CalificacionDto,
   type CancelarPropuestaDto,
   type ContrapropuestaDto,
   type CrearPropuestaDto,
@@ -382,6 +383,45 @@ export class TruequesService {
           ruta: ruta(p.id),
         },
         ...avisosOtras,
+      ];
+    });
+  }
+
+  // ───────────── RF-22: calificar ─────────────
+
+  /** Cada parte califica una vez; cuando califican las dos el trueque queda FINALIZADO. */
+  async calificar(id: string, usuarioId: string, dto: CalificacionDto): Promise<PropuestaDetalle> {
+    // Si ya pasaron los 7 días, el trueque se finaliza antes de validar.
+    await this.finalizarVencidas();
+    return this.transicion(id, usuarioId, 'calificar', async (tx, p) => {
+      const intercambio = await tx.intercambio.findUniqueOrThrow({
+        where: { propuestaId: p.id },
+        include: { calificaciones: { select: { calificadorId: true } } },
+      });
+      if (intercambio.calificaciones.some((c) => c.calificadorId === usuarioId)) {
+        throw new ConflictException('Ya calificaste este trueque.');
+      }
+      const calificadoId = this.otro(p, usuarioId);
+      await tx.calificacion.create({
+        data: {
+          intercambioId: intercambio.id,
+          calificadorId: usuarioId,
+          calificadoId,
+          puntuacion: dto.puntuacion,
+          comentario: dto.comentario,
+        },
+      });
+      if (intercambio.calificaciones.length + 1 >= 2) {
+        await tx.propuestaTrueque.update({ where: { id: p.id }, data: { estado: 'FINALIZADO' } });
+      }
+      return [
+        {
+          usuarioId: calificadoId,
+          tipo: 'CALIFICACION_RECIBIDA',
+          titulo: 'Te calificaron',
+          mensaje: `${await this.nombre(tx, usuarioId)} te dio ${dto.puntuacion} de 5 estrellas.`,
+          ruta: ruta(p.id),
+        },
       ];
     });
   }

@@ -20,6 +20,7 @@ import {
   type ConfirmarContrasenaDto,
   type PerfilPrivado,
   type PerfilPublico,
+  type CalificacionPublica,
 } from '@trueque/shared';
 import { z } from 'zod';
 import { type ArchivoSubido, MAX_BYTES_IMAGEN } from '../almacenamiento/imagenes.service.js';
@@ -72,6 +73,14 @@ export class UsuariosController {
     @Body({ schema: confirmarContrasenaSchema }) dto: ConfirmarContrasenaDto,
   ): Promise<void> {
     await this.usuarios.eliminarCuenta(u.id, dto.contrasena);
+  }
+
+  @Get(':id/calificaciones')
+  @ApiOperation({ summary: 'RF-23: calificaciones que recibió un usuario' })
+  calificaciones(
+    @Param('id', { schema: z.uuid('Usuario no válido') }) id: string,
+  ): Promise<CalificacionPublica[]> {
+    return this.usuarios.calificaciones(id);
   }
 
   @Get(':id')

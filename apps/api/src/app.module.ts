@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { PublicacionesModule } from './publicaciones/publicaciones.module.js';
 import { MensajesModule } from './mensajes/mensajes.module.js';
 import { NotificacionesModule } from './notificaciones/notificaciones.module.js';
+import { ReportesModule } from './reportes/reportes.module.js';
 import { SaludModule } from './salud/salud.module.js';
 import { TruequesModule } from './trueques/trueques.module.js';
 import { UsuariosModule } from './usuarios/usuarios.module.js';
@@ -37,6 +38,7 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
     NotificacionesModule,
     TruequesModule,
     MensajesModule,
+    ReportesModule,
   ],
   // El límite de peticiones va primero para frenar abusos antes de validar tokens.
   providers: [{ provide: APP_GUARD, useClass: LimiteHttpGuard }],

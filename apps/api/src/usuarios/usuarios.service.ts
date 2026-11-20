@@ -7,6 +7,7 @@ import {
 import { hash, verify } from '@node-rs/argon2';
 import {
   type ActualizarPerfilDto,
+  type CalificacionPublica,
   ESTADOS_EN_CURSO,
   ESTADOS_PENDIENTES,
   type PerfilPrivado,
@@ -72,6 +73,24 @@ export class UsuariosService {
     if (!u || u.estado !== 'ACTIVO')
       throw new NotFoundException('Este usuario no está disponible.');
     return this.armarPublico(u);
+  }
+
+  /** RF-23: últimas calificaciones recibidas, con el primer nombre de quien calificó. */
+  async calificaciones(id: string): Promise<CalificacionPublica[]> {
+    await this.perfilPublico(id);
+    const lista = await this.prisma.calificacion.findMany({
+      where: { calificadoId: id },
+      orderBy: { fecha: 'desc' },
+      take: 50,
+      include: { calificador: { select: { nombre: true } } },
+    });
+    return lista.map((c) => ({
+      id: c.id,
+      puntuacion: c.puntuacion,
+      comentario: c.comentario,
+      fecha: c.fecha.toISOString(),
+      autor: c.calificador.nombre.split(' ')[0] ?? 'Alguien',
+    }));
   }
 
   async actualizar(id: string, dto: ActualizarPerfilDto): Promise<PerfilPrivado> {
