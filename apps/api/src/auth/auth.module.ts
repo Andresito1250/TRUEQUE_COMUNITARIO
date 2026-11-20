@@ -18,5 +18,7 @@ import { TokensService } from './tokens.service.js';
     // Todas las rutas exigen sesión salvo las marcadas con @Publico().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
+  // El socket de tiempo real valida el mismo access token.
+  exports: [TokensService],
 })
 export class AuthModule {}

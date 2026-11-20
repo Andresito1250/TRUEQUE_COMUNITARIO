@@ -7,3 +7,4 @@ export * from './publicaciones.js';
 export * from './busqueda.js';
 export * from './trueques.js';
 export * from './notificaciones.js';
+export * from './mensajes.js';

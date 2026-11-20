@@ -26,6 +26,8 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    // El socket de tiempo real valida el token una sola vez, al conectarse (TiempoRealGateway).
+    if (ctx.getType() !== 'http') return true;
     const objetivos = [ctx.getHandler(), ctx.getClass()];
     if (this.reflector.getAllAndOverride<boolean>(ES_PUBLICO, objetivos)) return true;
 
