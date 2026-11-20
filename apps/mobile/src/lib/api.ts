@@ -53,7 +53,7 @@ export function configurarAuth(p: ProveedorAuth) {
 }
 
 type Opciones = Omit<RequestInit, 'body'> & {
-  /** Cuerpo que se envía como JSON. */
+  /** Cuerpo que se envía como JSON, o FormData para subir archivos. */
   cuerpo?: unknown;
   /** false para no enviar el token ni reintentar con refresh (endpoints de autenticación). */
   auth?: boolean;
@@ -64,12 +64,14 @@ export async function pedir<T>(
   ruta: string,
   { cuerpo, auth = true, ...init }: Opciones = {},
 ): Promise<T> {
+  const esFormulario = cuerpo instanceof FormData;
   const ejecutar = (token: string | null) =>
     fetch(`${API_URL}${ruta}`, {
       ...init,
-      body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+      body: cuerpo === undefined ? undefined : esFormulario ? cuerpo : JSON.stringify(cuerpo),
       headers: {
-        'Content-Type': 'application/json',
+        // Con FormData, fetch pone el Content-Type con el separador de partes.
+        ...(esFormulario ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
       },
@@ -96,4 +98,12 @@ export async function pedir<T>(
     throw new ErrorApi(res.status, mensaje, datos?.codigo);
   }
   return datos as T;
+}
+
+/** El API devuelve rutas relativas (/api/v1/archivos/...) cuando sirve las imágenes él mismo. */
+export function urlArchivo(url: string): string;
+export function urlArchivo(url: string | null | undefined): string | null;
+export function urlArchivo(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.startsWith('/') ? `${API_URL}${url}` : url;
 }

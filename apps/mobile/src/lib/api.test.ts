@@ -1,4 +1,4 @@
-import { configurarAuth, ErrorApi, mensajeDeError, pedir, resolverUrlApi } from './api';
+import { configurarAuth, ErrorApi, mensajeDeError, pedir, resolverUrlApi, urlArchivo } from './api';
 
 describe('resolverUrlApi', () => {
   it('usa la URL explícita sin barra final', () => {
@@ -92,5 +92,32 @@ describe('pedir', () => {
   it('traduce una falla de red a un mensaje comprensible (RNF07)', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('Network request failed'));
     await expect(pedir('/x', { auth: false })).rejects.toMatchObject({ estado: 0 });
+  });
+});
+
+describe('archivos (RF-06)', () => {
+  const fetchMock = jest.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    globalThis.fetch = fetchMock;
+    configurarAuth({ obtenerAccess: () => 'tk', renovar: jest.fn() });
+  });
+
+  it('convierte rutas relativas del API en URLs completas', () => {
+    expect(urlArchivo('/api/v1/archivos/publicaciones/a.jpg')).toMatch(
+      /^http:\/\/.+:3000\/api\/v1\/archivos\/publicaciones\/a\.jpg$/,
+    );
+    expect(urlArchivo('https://cdn.trueque.co/a.jpg')).toBe('https://cdn.trueque.co/a.jpg');
+    expect(urlArchivo(null)).toBeNull();
+  });
+
+  it('envía FormData sin forzar Content-Type JSON', async () => {
+    fetchMock.mockReturnValueOnce(respuesta(201, { id: 'p1' }));
+    const datos = new FormData();
+    await pedir('/api/v1/publicaciones/p1/imagenes', { method: 'POST', cuerpo: datos });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.body).toBe(datos);
+    expect(init.headers['Content-Type']).toBeUndefined();
+    expect(init.headers.Authorization).toBe('Bearer tk');
   });
 });

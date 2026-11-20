@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LOCALIDAD_NOMBRE } from '@trueque/shared';
 import { router } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { FilaMenu } from '@/components/ui/fila-menu';
@@ -9,17 +9,32 @@ import { Pantalla } from '@/components/ui/pantalla';
 import { Texto } from '@/components/ui/texto';
 import { Radius, Spacing } from '@/constants/theme';
 import { usePerfil } from '@/hooks/use-perfil';
+import { useFotoPerfil } from '@/hooks/use-publicaciones';
 import { useTheme } from '@/hooks/use-theme';
+import { mensajeDeError, urlArchivo } from '@/lib/api';
+import { elegirFotos, preguntarOrigen } from '@/lib/fotos';
 import { useSesion } from '@/store/sesion';
+import { Aviso } from '@/components/ui/aviso';
 
 /** Perfil propio con reputación (RF-05, RF-23) y menú de cuenta. El cierre de sesión está aquí (RF-03). */
 export default function PerfilScreen() {
   const theme = useTheme();
   const { data: perfil } = usePerfil();
   const cerrar = useSesion((s) => s.cerrar);
+  const foto = useFotoPerfil();
 
   if (!perfil) return null;
   const { reputacion } = perfil;
+
+  /** RF-05: foto de perfil desde la cámara o la galería. */
+  const cambiarFoto = () =>
+    preguntarOrigen(
+      async (origen) => {
+        const [uri] = await elegirFotos(origen, 1);
+        if (uri) foto.cambiar.mutate(uri);
+      },
+      perfil.fotoUrl ? { texto: 'Quitar foto', accion: () => foto.quitar.mutate() } : undefined,
+    );
 
   const confirmarCierre = () =>
     Alert.alert('Cerrar sesión', '¿Quieres cerrar tu sesión en este celular?', [
@@ -34,7 +49,21 @@ export default function PerfilScreen() {
   return (
     <Pantalla>
       <View style={styles.cabecera}>
-        <Avatar nombre={perfil.nombre} fotoUrl={perfil.fotoUrl} />
+        <Pressable
+          onPress={cambiarFoto}
+          accessibilityRole="button"
+          accessibilityLabel={perfil.fotoUrl ? 'Cambiar foto de perfil' : 'Agregar foto de perfil'}
+          disabled={foto.cambiar.isPending || foto.quitar.isPending}
+        >
+          <Avatar nombre={perfil.nombre} fotoUrl={urlArchivo(perfil.fotoUrl)} />
+          <View style={[styles.camara, { backgroundColor: theme.primary }]}>
+            {foto.cambiar.isPending || foto.quitar.isPending ? (
+              <ActivityIndicator size="small" color={theme.onPrimary} />
+            ) : (
+              <Ionicons name="camera" size={16} color={theme.onPrimary} />
+            )}
+          </View>
+        </Pressable>
         <View style={styles.flex}>
           <Texto variante="subtitulo" accessibilityRole="header">
             {perfil.nombre}
@@ -62,7 +91,21 @@ export default function PerfilScreen() {
         <Dato valor={String(reputacion.calificaciones)} etiqueta="Opiniones" />
       </View>
 
+      <Aviso
+        mensaje={
+          foto.cambiar.error || foto.quitar.error
+            ? mensajeDeError(foto.cambiar.error ?? foto.quitar.error)
+            : null
+        }
+      />
+
       <View>
+        <FilaMenu
+          icono="albums-outline"
+          titulo="Mis publicaciones"
+          detalle="Activas e intercambiadas"
+          onPress={() => router.push('/mis-publicaciones')}
+        />
         <FilaMenu
           icono="person-outline"
           titulo="Editar perfil"
@@ -108,6 +151,16 @@ function Dato({ valor, etiqueta }: { valor: string; etiqueta: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   cabecera: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
+  camara: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   insignia: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: Spacing.xs },
   reputacion: { flexDirection: 'row', borderRadius: Radius.md, padding: Spacing.md },
   dato: { flex: 1, alignItems: 'center' },

@@ -70,6 +70,15 @@ export default function RootLayout() {
               name="ajustes/privacidad"
               options={{ headerShown: true, title: 'Privacidad y datos' }}
             />
+            <Stack.Screen name="publicacion/[id]" options={{ headerShown: true, title: '' }} />
+            <Stack.Screen
+              name="publicacion/editar/[id]"
+              options={{ headerShown: true, title: 'Editar publicación' }}
+            />
+            <Stack.Screen
+              name="mis-publicaciones"
+              options={{ headerShown: true, title: 'Mis publicaciones' }}
+            />
           </Stack.Protected>
           {/* Siempre disponibles. */}
           <Stack.Screen
