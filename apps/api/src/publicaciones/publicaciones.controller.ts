@@ -79,6 +79,14 @@ export class PublicacionesController {
     return this.publicaciones.mias(u.id, filtro.historico);
   }
 
+  @Get('usuarios/:id/publicaciones')
+  @ApiOperation({ summary: 'Publicaciones disponibles de otra persona (contrapropuesta, RF-15)' })
+  deUsuario(
+    @Param('id', { schema: z.uuid('Usuario no válido') }) id: string,
+  ): Promise<PublicacionResumen[]> {
+    return this.publicaciones.disponiblesDe(id);
+  }
+
   @Get('publicaciones/:id')
   @ApiOperation({ summary: 'RF-13: detalle de una publicación' })
   detalle(

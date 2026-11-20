@@ -5,3 +5,5 @@ export * from './auth.js';
 export * from './geo.js';
 export * from './publicaciones.js';
 export * from './busqueda.js';
+export * from './trueques.js';
+export * from './notificaciones.js';

@@ -5,11 +5,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
-import type { ActualizarPerfilDto, PerfilPrivado, PerfilPublico } from '@trueque/shared';
+import {
+  type ActualizarPerfilDto,
+  ESTADOS_EN_CURSO,
+  ESTADOS_PENDIENTES,
+  type PerfilPrivado,
+  type PerfilPublico,
+} from '@trueque/shared';
 import { AlmacenamientoService } from '../almacenamiento/almacenamiento.service.js';
 import { type ArchivoSubido, ImagenesService } from '../almacenamiento/imagenes.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { tokenAleatorio } from '../comun/cripto.js';
+import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** Estados en los que un trueque cuenta como realizado para la reputación (RF-23). */
@@ -42,6 +49,7 @@ export class UsuariosService {
     private readonly auditoria: AuditoriaService,
     private readonly almacenamiento: AlmacenamientoService,
     private readonly imagenes: ImagenesService,
+    private readonly notificaciones: NotificacionesService,
   ) {}
 
   /** Perfil completo del propio usuario (RF-05). */
@@ -98,7 +106,37 @@ export class UsuariosService {
     }
 
     const fotoAnterior = u.fotoUrl;
-    await this.prisma.$transaction(async (tx) => {
+    const avisos = await this.prisma.$transaction(async (tx) => {
+      // Los trueques abiertos se cancelan y se liberan los artículos de la otra persona.
+      const abiertas = await tx.propuestaTrueque.findMany({
+        where: {
+          estado: { in: [...ESTADOS_PENDIENTES, ...ESTADOS_EN_CURSO] },
+          OR: [{ proponenteId: id }, { receptorId: id }],
+        },
+        select: {
+          id: true,
+          estado: true,
+          proponenteId: true,
+          receptorId: true,
+          articulos: { select: { publicacionId: true } },
+        },
+      });
+      await tx.propuestaTrueque.updateMany({
+        where: { id: { in: abiertas.map((a) => a.id) } },
+        data: { estado: 'CANCELADA', motivoCierre: 'La otra persona eliminó su cuenta.' },
+      });
+      await tx.publicacion.updateMany({
+        where: {
+          id: {
+            in: abiertas
+              .filter((a) => ESTADOS_EN_CURSO.includes(a.estado))
+              .flatMap((a) => a.articulos.map((x) => x.publicacionId)),
+          },
+          estado: 'RESERVADA',
+        },
+        data: { estado: 'DISPONIBLE' },
+      });
+
       await tx.usuario.update({
         where: { id },
         data: {
@@ -128,7 +166,19 @@ export class UsuariosService {
         { accion: 'CUENTA_ELIMINADA', actorId: id, entidad: 'Usuario', entidadId: id },
         tx,
       );
+      return this.notificaciones.crear(
+        abiertas.map((a) => ({
+          usuarioId: a.proponenteId === id ? a.receptorId : a.proponenteId,
+          tipo: 'TRUEQUE_CANCELADO' as const,
+          titulo: 'Un trueque fue cancelado',
+          mensaje:
+            'La otra persona eliminó su cuenta. Tus publicaciones vuelven a estar disponibles.',
+          ruta: `/propuesta/${a.id}`,
+        })),
+        tx,
+      );
     });
+    this.notificaciones.emitir(avisos);
     await this.almacenamiento.eliminar([fotoAnterior]);
   }
 

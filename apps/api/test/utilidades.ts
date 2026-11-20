@@ -52,6 +52,21 @@ export async function limpiarUsuariosDePrueba(prisma: PrismaService) {
   const deUsuariosDePrueba = {
     OR: [{ correo: { endsWith: '@e2e.test' } }, { correo: { startsWith: 'eliminado-' } }],
   };
+  const deUsuarios = { OR: [{ proponente: deUsuariosDePrueba }, { receptor: deUsuariosDePrueba }] };
+  await prisma.reporte.deleteMany({
+    where: {
+      OR: [
+        { reportante: deUsuariosDePrueba },
+        { usuarioReportado: deUsuariosDePrueba },
+        { publicacion: { usuario: deUsuariosDePrueba } },
+      ],
+    },
+  });
+  // Las contrapropuestas apuntan a su propuesta padre: se borran primero las hijas.
+  await prisma.propuestaTrueque.deleteMany({
+    where: { ...deUsuarios, propuestaPadreId: { not: null } },
+  });
+  await prisma.propuestaTrueque.deleteMany({ where: deUsuarios });
   await prisma.publicacion.deleteMany({ where: { usuario: deUsuariosDePrueba } });
   await prisma.registroAuditoria.deleteMany({
     where: { actor: { correo: { endsWith: '@e2e.test' } } },

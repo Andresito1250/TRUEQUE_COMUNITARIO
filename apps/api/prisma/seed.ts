@@ -9,6 +9,7 @@ import { hash } from '@node-rs/argon2';
 import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '@trueque/shared';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { sembrarDemo } from './demo.js';
+import { sembrarPuntos } from './puntos-encuentro.js';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? '' }),
@@ -36,6 +37,7 @@ async function main() {
     });
   }
   console.log(`✔ ${CATEGORIAS.length} categorías`);
+  await sembrarPuntos(prisma);
 
   const correo = process.env.SEED_ADMIN_CORREO ?? 'admin@trueque.local';
   const contrasena = process.env.SEED_ADMIN_CONTRASENA ?? 'Admin2026';

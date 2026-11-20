@@ -9,6 +9,7 @@ import {
   type ActualizarPublicacionDto,
   type CambiarEstadoPublicacionDto,
   type Coordenadas,
+  ESTADOS_EN_CURSO,
   type CrearPublicacionDto,
   LIMITES,
   type PublicacionDetalle,
@@ -25,7 +26,9 @@ import {
   sqlPunto,
 } from '../comun/ubicacion.js';
 import type { EstadoPublicacion } from '../generated/prisma/client.js';
+import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { TruequesService } from '../trueques/trueques.service.js';
 import { aResumen, INCLUIR, type PublicacionCompleta } from './mapeo.js';
 import { UsuariosService } from '../usuarios/usuarios.service.js';
 
@@ -41,6 +44,8 @@ export class PublicacionesService {
     private readonly almacenamiento: AlmacenamientoService,
     private readonly usuarios: UsuariosService,
     private readonly auditoria: AuditoriaService,
+    private readonly trueques: TruequesService,
+    private readonly notificaciones: NotificacionesService,
   ) {}
 
   /** RF-06: crea la publicación. Las fotos se suben después con agregarImagenes(). */
@@ -164,7 +169,17 @@ export class PublicacionesService {
         'Esta publicación fue ocultada por moderación y no se puede cambiar.',
       );
     }
-    // TODO(Sprint 4): impedir el cambio manual si hay un trueque en curso sobre la publicación.
+    const enCurso = await this.prisma.propuestaTrueque.count({
+      where: {
+        estado: { in: [...ESTADOS_EN_CURSO] },
+        articulos: { some: { publicacionId: id } },
+      },
+    });
+    if (enCurso > 0) {
+      throw new ConflictException(
+        'Esta publicación está en un trueque en curso. Cancélalo o márcalo como hecho desde Trueques.',
+      );
+    }
     await this.prisma.publicacion.update({ where: { id }, data: { estado } });
     await this.auditoria.registrar({
       accion: 'PUBLICACION_ESTADO',
@@ -184,13 +199,31 @@ export class PublicacionesService {
         'Tienes un trueque en curso con esta publicación. Cancélalo o márcala como disponible antes de eliminarla.',
       );
     }
-    await this.prisma.publicacion.update({ where: { id }, data: { estado: 'ELIMINADA' } });
-    await this.auditoria.registrar({
-      accion: 'PUBLICACION_ELIMINADA',
-      actorId: usuarioId,
-      entidad: 'Publicacion',
-      entidadId: id,
+    const avisos = await this.prisma.$transaction(async (tx) => {
+      await tx.publicacion.update({ where: { id }, data: { estado: 'ELIMINADA' } });
+      await this.auditoria.registrar(
+        {
+          accion: 'PUBLICACION_ELIMINADA',
+          actorId: usuarioId,
+          entidad: 'Publicacion',
+          entidadId: id,
+        },
+        tx,
+      );
+      // Las propuestas que esperaban respuesta sobre esta publicación se cierran.
+      return this.trueques.cerrarPorPublicacionEliminada(tx, id, usuarioId);
     });
+    this.notificaciones.emitir(avisos);
+  }
+
+  /** Publicaciones disponibles de otra persona (para armar una contrapropuesta, RF-15). */
+  async disponiblesDe(usuarioId: string): Promise<PublicacionResumen[]> {
+    const lista = await this.prisma.publicacion.findMany({
+      where: { usuarioId, estado: 'DISPONIBLE', usuario: { estado: 'ACTIVO' } },
+      include: INCLUIR,
+      orderBy: { fechaPublicacion: 'desc' },
+    });
+    return lista.map((p) => this.resumen(p));
   }
 
   /** RF-06: agrega fotos respetando el máximo de 5 por publicación. */
