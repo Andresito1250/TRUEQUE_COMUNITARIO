@@ -81,6 +81,10 @@ export default function RootLayout() {
               options={{ headerShown: true, title: 'Editar publicación' }}
             />
             <Stack.Screen
+              name="filtros"
+              options={{ headerShown: true, title: 'Filtros', presentation: 'modal' }}
+            />
+            <Stack.Screen
               name="mis-publicaciones"
               options={{ headerShown: true, title: 'Mis publicaciones' }}
             />

@@ -3,6 +3,7 @@ import {
   ESTADO_CONSERVACION_NOMBRE,
   ESTADO_PUBLICACION_NOMBRE,
   type EstadoPublicacion,
+  formatearDistancia,
   LOCALIDAD_NOMBRE,
   type PublicacionDetalle,
   TIPO_NOMBRE,
@@ -73,7 +74,14 @@ export default function DetallePublicacionScreen() {
               texto={ESTADO_CONSERVACION_NOMBRE[p.estadoConservacion]}
             />
           ) : null}
-          <Dato icono="location-outline" texto={LOCALIDAD_NOMBRE[p.localidad]} />
+          <Dato
+            icono="location-outline"
+            texto={
+              p.distanciaM === null
+                ? LOCALIDAD_NOMBRE[p.localidad]
+                : `${LOCALIDAD_NOMBRE[p.localidad]}, ${formatearDistancia(p.distanciaM)}`
+            }
+          />
         </View>
         <Texto>{p.descripcion}</Texto>
 

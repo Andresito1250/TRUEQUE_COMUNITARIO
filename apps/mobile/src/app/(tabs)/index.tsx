@@ -1,74 +1,96 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AvisoUbicacion } from '@/components/busqueda/aviso-ubicacion';
+import { BarraBusqueda } from '@/components/busqueda/barra-busqueda';
+import { ChipsCategorias } from '@/components/busqueda/chips-categorias';
+import { TarjetaPublicacion } from '@/components/publicacion/tarjeta-publicacion';
 import { Boton } from '@/components/ui/boton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { Pantalla } from '@/components/ui/pantalla';
 import { Texto } from '@/components/ui/texto';
-import { Radius, Spacing } from '@/constants/theme';
-import { useSalud } from '@/hooks/use-salud';
+import { Spacing } from '@/constants/theme';
+import { useBusqueda } from '@/hooks/use-busqueda';
+import { useCategorias } from '@/hooks/use-perfil';
 import { useTheme } from '@/hooks/use-theme';
-import { API_URL, mensajeDeError } from '@/lib/api';
+import { mensajeDeError } from '@/lib/api';
+import { useFiltros } from '@/store/filtros';
 import { useSesion } from '@/store/sesion';
+import { useUbicacion } from '@/store/ubicacion';
 
-/** Inicio — "Cerca de mí". En el Sprint 3 mostrará las publicaciones cercanas (RF-12). */
+const CERCANAS = 8;
+const FILTROS_INICIO = { orden: 'cercania' } as const;
+
+/** Inicio: lo que hay cerca (RF-12), acceso rápido a buscar (RF-10) y a categorías (RF-11). */
 export default function InicioScreen() {
-  const nombre = useSesion((s) => s.usuario?.nombre.split(' ')[0]);
+  const theme = useTheme();
+  const usuario = useSesion((s) => s.usuario);
+  const { origen, revisar } = useUbicacion();
+  const { data: categorias = [] } = useCategorias();
+  const verCategoria = useFiltros((s) => s.verCategoria);
+  const { data, isLoading, error, refetch, isRefetching } = useBusqueda(FILTROS_INICIO, origen);
+
+  useEffect(() => {
+    void revisar();
+  }, [revisar]);
+
+  const cercanas = data?.pages[0]?.items.slice(0, CERCANAS) ?? [];
+  const irABuscar = () => router.navigate('/buscar');
+
   return (
-    <Pantalla>
-      <Texto variante="titulo">{nombre ? `¡Hola, ${nombre}!` : 'Cerca de ti'}</Texto>
-      <EstadoConexion />
-      <EstadoVacio
-        icono="leaf-outline"
-        titulo="Aquí verás lo que tus vecinos quieren cambiar"
-        descripcion="Muy pronto podrás ver publicaciones de Suba, Kennedy y Teusaquillo a pocos kilómetros de ti."
-      />
+    <Pantalla refrescar={{ activo: isRefetching, onRefrescar: () => void refetch() }}>
+      <Texto variante="titulo">
+        {usuario ? `¡Hola, ${usuario.nombre.split(' ')[0]}!` : 'Cerca de ti'}
+      </Texto>
+      <BarraBusqueda valor="" onBuscar={() => undefined} onPress={irABuscar} />
+
+      {categorias.length ? (
+        <View style={styles.seccion}>
+          <Texto variante="subtitulo">Categorías</Texto>
+          <ChipsCategorias
+            categorias={categorias}
+            onElegir={(id) => {
+              verCategoria(id);
+              irABuscar();
+            }}
+          />
+        </View>
+      ) : null}
+
+      <View style={styles.seccion}>
+        <Texto variante="subtitulo">Cerca de ti</Texto>
+        <AvisoUbicacion localidad={usuario?.localidad} />
+        {isLoading ? (
+          <ActivityIndicator color={theme.primary} style={styles.cargando} />
+        ) : error ? (
+          <EstadoVacio
+            icono="cloud-offline-outline"
+            titulo="No pudimos cargar las publicaciones"
+            descripcion={mensajeDeError(error)}
+            accion={{ titulo: 'Reintentar', onPress: () => void refetch() }}
+          />
+        ) : cercanas.length === 0 ? (
+          <EstadoVacio
+            icono="leaf-outline"
+            titulo="Todavía no hay publicaciones cerca"
+            descripcion="Sé el primero: publica algo que ya no uses o un servicio que puedas ofrecer."
+            accion={{ titulo: 'Publicar', onPress: () => router.navigate('/publicar') }}
+          />
+        ) : (
+          <>
+            {cercanas.map((p) => (
+              <TarjetaPublicacion key={p.id} publicacion={p} />
+            ))}
+            <Boton titulo="Ver todas en Buscar" variante="secundario" onPress={irABuscar} />
+          </>
+        )}
+      </View>
     </Pantalla>
   );
 }
 
-/** Tarjeta de diagnóstico del Sprint 0: confirma que la app llega al API (GET /health). */
-function EstadoConexion() {
-  const theme = useTheme();
-  const { data, isLoading, error, refetch, isRefetching } = useSalud();
-  const ok = data?.estado === 'ok';
-
-  return (
-    <View
-      style={[styles.tarjeta, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
-      accessibilityLiveRegion="polite"
-    >
-      <View style={styles.fila}>
-        <Ionicons
-          name={isLoading ? 'time-outline' : ok ? 'checkmark-circle' : 'alert-circle'}
-          size={24}
-          color={ok ? theme.success : isLoading ? theme.textSecondary : theme.danger}
-        />
-        <Texto negrita>
-          {isLoading
-            ? 'Conectando con el servidor…'
-            : ok
-              ? 'Conectado al servidor'
-              : 'Sin conexión al servidor'}
-        </Texto>
-      </View>
-      {error ? <Texto color="textSecondary">{mensajeDeError(error)}</Texto> : null}
-      <Texto variante="pequeno" color="textSecondary">
-        {API_URL}
-      </Texto>
-      {!isLoading && !ok ? (
-        <Boton
-          titulo="Reintentar"
-          variante="secundario"
-          onPress={() => refetch()}
-          cargando={isRefetching}
-        />
-      ) : null}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  tarjeta: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
-  fila: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  seccion: { gap: Spacing.sm },
+  cargando: { marginVertical: Spacing.xl },
 });

@@ -8,9 +8,11 @@ import type {
   PublicacionResumen,
 } from '@trueque/shared';
 
+import { consulta } from '@/hooks/use-busqueda';
 import { pedir } from '@/lib/api';
 import { formularioConFotos } from '@/lib/fotos';
 import { useSesion } from '@/store/sesion';
+import { useUbicacion } from '@/store/ubicacion';
 
 const claves = {
   mias: (historico: boolean) => ['publicaciones', 'mias', historico] as const,
@@ -28,9 +30,12 @@ export function useMisPublicaciones(historico: boolean) {
 
 /** RF-13: detalle de una publicación. */
 export function usePublicacion(id: string) {
+  const origen = useUbicacion((s) => s.origen);
   return useQuery({
     queryKey: claves.detalle(id),
-    queryFn: () => pedir<PublicacionDetalle>(`/api/v1/publicaciones/${id}`),
+    // La distancia se calcula desde la ubicación actual, o desde la localidad si no la hay.
+    queryFn: () =>
+      pedir<PublicacionDetalle>(`/api/v1/publicaciones/${id}${consulta({ ...origen })}`),
   });
 }
 
@@ -40,6 +45,7 @@ function useAlCambiar() {
   return (p?: PublicacionDetalle) => {
     if (p) qc.setQueryData(claves.detalle(p.id), p);
     void qc.invalidateQueries({ queryKey: ['publicaciones', 'mias'] });
+    void qc.invalidateQueries({ queryKey: ['busqueda'] });
   };
 }
 
@@ -80,6 +86,7 @@ export function useEliminarPublicacion(id: string) {
     onSuccess: () => {
       qc.removeQueries({ queryKey: claves.detalle(id) });
       void qc.invalidateQueries({ queryKey: ['publicaciones', 'mias'] });
+      void qc.invalidateQueries({ queryKey: ['busqueda'] });
     },
   });
 }

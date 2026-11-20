@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
@@ -11,6 +11,8 @@ type PantallaProps = {
   scroll?: boolean;
   /** false cuando la pantalla tiene encabezado de navegación (ya respeta el área superior). */
   bordeSuperior?: boolean;
+  /** Si se pasa, permite "jalar para actualizar". */
+  refrescar?: { activo: boolean; onRefrescar: () => void };
 };
 
 /**
@@ -19,7 +21,12 @@ type PantallaProps = {
  * y `contentInsetAdjustmentBehavior`); un KeyboardAvoidingView aquí empujaba el contenido
  * hacia arriba y dejaba los primeros campos fuera de alcance.
  */
-export function Pantalla({ children, scroll = true, bordeSuperior = true }: PantallaProps) {
+export function Pantalla({
+  children,
+  scroll = true,
+  bordeSuperior = true,
+  refrescar,
+}: PantallaProps) {
   const theme = useTheme();
   return (
     <SafeAreaView
@@ -34,6 +41,15 @@ export function Pantalla({ children, scroll = true, bordeSuperior = true }: Pant
           keyboardDismissMode="interactive"
           automaticallyAdjustKeyboardInsets
           contentInsetAdjustmentBehavior={bordeSuperior ? 'never' : 'automatic'}
+          refreshControl={
+            refrescar ? (
+              <RefreshControl
+                refreshing={refrescar.activo}
+                onRefresh={refrescar.onRefrescar}
+                tintColor={theme.primary}
+              />
+            ) : undefined
+          }
         >
           {children}
         </ScrollView>
