@@ -82,6 +82,11 @@ export default function RootLayout() {
               name="publicacion/editar/[id]"
               options={{ headerShown: true, title: 'Editar publicación' }}
             />
+            <Stack.Screen name="usuario/[id]" options={{ headerShown: true, title: 'Perfil' }} />
+            <Stack.Screen
+              name="reportar"
+              options={{ headerShown: true, title: 'Reportar', presentation: 'modal' }}
+            />
             <Stack.Screen name="chat/[id]" options={{ headerShown: true, title: 'Chat' }} />
             <Stack.Screen
               name="notificaciones"

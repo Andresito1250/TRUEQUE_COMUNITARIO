@@ -73,7 +73,11 @@ export function TarjetaPropuesta({ propuesta: p }: { propuesta: PropuestaResumen
           </Texto>
         </View>
         <View style={styles.fila}>
-          <Avatar nombre={p.contraparte.nombre} fotoUrl={p.contraparte.fotoUrl} tamano={22} />
+          <Avatar
+            nombre={p.contraparte.nombre}
+            fotoUrl={urlArchivo(p.contraparte.fotoUrl)}
+            tamano={22}
+          />
           <Texto variante="pequeno" numberOfLines={1} style={styles.flex}>
             {p.contraparte.nombre}
           </Texto>

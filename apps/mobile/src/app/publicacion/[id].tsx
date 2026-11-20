@@ -9,7 +9,7 @@ import {
   TIPO_NOMBRE,
 } from '@trueque/shared';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { Carrusel } from '@/components/publicacion/carrusel';
@@ -113,9 +113,11 @@ function Oferente({ p }: { p: PublicacionDetalle }) {
   const theme = useTheme();
   const { oferente: o } = p;
   return (
-    <View
+    <Pressable
+      disabled={p.esMia}
+      onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: o.id } })}
       style={[styles.oferente, { backgroundColor: theme.surfaceAlt }]}
-      accessible
+      accessibilityRole={p.esMia ? undefined : 'button'}
       accessibilityLabel={`Publicado por ${o.nombre}. ${o.verificado ? 'Cuenta verificada. ' : ''}${
         o.reputacion.promedio === null
           ? 'Sin calificaciones'
@@ -135,7 +137,8 @@ function Oferente({ p }: { p: PublicacionDetalle }) {
           · {o.reputacion.intercambios} {o.reputacion.intercambios === 1 ? 'trueque' : 'trueques'}
         </Texto>
       </View>
-    </View>
+      {p.esMia ? null : <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />}
+    </Pressable>
   );
 }
 
@@ -155,6 +158,13 @@ function AccionesVisitante({ p }: { p: PublicacionDetalle }) {
           mensaje={`Esta publicación está ${ESTADO_PUBLICACION_NOMBRE[p.estado].toLowerCase()}.`}
         />
       )}
+      <Boton
+        titulo="Reportar publicación"
+        variante="texto"
+        onPress={() =>
+          router.push({ pathname: '/reportar', params: { publicacionId: p.id, nombre: p.titulo } })
+        }
+      />
     </View>
   );
 }

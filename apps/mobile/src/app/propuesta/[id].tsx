@@ -10,9 +10,10 @@ import {
 } from '@trueque/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { ElegirEstrellas, Estrellas } from '@/components/estrellas';
 import { TarjetaPublicacion } from '@/components/publicacion/tarjeta-publicacion';
 import { InsigniaPropuesta } from '@/components/trueque/tarjeta-propuesta';
 import { Aviso } from '@/components/ui/aviso';
@@ -22,9 +23,10 @@ import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { Pantalla } from '@/components/ui/pantalla';
 import { Texto } from '@/components/ui/texto';
 import { Radius, Spacing } from '@/constants/theme';
+import { useCalificar } from '@/hooks/use-confianza';
 import { useTheme } from '@/hooks/use-theme';
 import { useAccionPropuesta, usePropuesta } from '@/hooks/use-trueques';
-import { mensajeDeError } from '@/lib/api';
+import { mensajeDeError, urlArchivo } from '@/lib/api';
 import { fechaHora } from '@/lib/fechas';
 
 /** RF-15 a RF-19: detalle del trueque con las acciones que el usuario puede hacer ahora. */
@@ -70,15 +72,25 @@ export default function PropuestaScreen() {
       </View>
       <Texto>{explicacion(p)}</Texto>
 
-      <View style={[styles.persona, { backgroundColor: theme.surfaceAlt }]}>
-        <Avatar nombre={p.contraparte.nombre} fotoUrl={p.contraparte.fotoUrl} tamano={44} />
+      <Pressable
+        onPress={() => router.push({ pathname: '/usuario/[id]', params: { id: p.contraparte.id } })}
+        accessibilityRole="button"
+        accessibilityLabel={`Ver el perfil de ${p.contraparte.nombre}`}
+        style={[styles.persona, { backgroundColor: theme.surfaceAlt }]}
+      >
+        <Avatar
+          nombre={p.contraparte.nombre}
+          fotoUrl={urlArchivo(p.contraparte.fotoUrl)}
+          tamano={44}
+        />
         <View style={styles.flex}>
           <Texto negrita>{p.contraparte.nombre}</Texto>
           <Texto variante="pequeno" color="textSecondary">
-            {p.contraparte.verificado ? 'Cuenta verificada' : 'Cuenta sin verificar'}
+            {p.contraparte.verificado ? 'Cuenta verificada' : 'Cuenta sin verificar'} · Ver perfil
           </Texto>
         </View>
-      </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+      </Pressable>
 
       <Lado titulo="Recibes" publicaciones={recibo} />
       <Lado titulo="Das" publicaciones={doy} />
@@ -112,6 +124,7 @@ export default function PropuestaScreen() {
         />
       ) : null}
 
+      <Calificar p={p} />
       <Acciones p={p} />
     </Pantalla>
   );
@@ -206,6 +219,53 @@ function Encuentro({ p }: { p: PropuestaDetalle }) {
         </View>
       ) : null}
     </Seccion>
+  );
+}
+
+/** RF-22: calificar a la otra persona durante los 7 días siguientes al trueque. */
+function Calificar({ p }: { p: PropuestaDetalle }) {
+  const theme = useTheme();
+  const calificar = useCalificar(p.id);
+  const [estrellas, setEstrellas] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const c = p.calificacion;
+  if (!c) return null;
+  const otro = p.contraparte.nombre.split(' ')[0];
+
+  if (c.mia) {
+    return (
+      <Seccion titulo="Tu calificación">
+        <Estrellas valor={c.mia.puntuacion} tamano={24} />
+        {c.mia.comentario ? <Texto>«{c.mia.comentario}»</Texto> : null}
+      </Seccion>
+    );
+  }
+  if (!p.acciones.includes('calificar')) return null;
+
+  return (
+    <View style={[styles.caja, { backgroundColor: theme.surfaceAlt, borderColor: theme.primary }]}>
+      <Texto variante="subtitulo">¿Cómo te fue con {otro}?</Texto>
+      <Texto variante="pequeno" color="textSecondary">
+        Tu calificación ayuda a que la comunidad confíe. Puedes calificar hasta el{' '}
+        {fechaHora(c.limite)}.
+      </Texto>
+      <ElegirEstrellas valor={estrellas} onChange={setEstrellas} />
+      <CampoTexto
+        etiqueta="Comentario (opcional)"
+        value={comentario}
+        onChangeText={setComentario}
+        maxLength={300}
+        multiline
+        placeholder="Fue puntual y el artículo estaba como lo describió"
+      />
+      <Aviso mensaje={calificar.error ? mensajeDeError(calificar.error) : null} />
+      <Boton
+        titulo="Enviar calificación"
+        disabled={!estrellas}
+        cargando={calificar.isPending}
+        onPress={() => calificar.mutate({ puntuacion: estrellas, comentario })}
+      />
+    </View>
   );
 }
 
