@@ -5,9 +5,11 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1),
+  /** Firma de los access token (JWT). */
   JWT_ACCESS_SECRET: z.string().min(1),
+  /** Clave para tokens temporales de 2FA y para el HMAC de refresh tokens y códigos. */
   JWT_REFRESH_SECRET: z.string().min(1),
-  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_ACCESS_MIN: z.coerce.number().int().positive().default(15),
   JWT_REFRESH_TTL_DIAS: z.coerce.number().int().positive().default(7),
   SMTP_URL: z.string().default('smtp://localhost:1025'),
   MAIL_FROM: z.string().default('Trueque Comunitario <no-responder@trueque.local>'),

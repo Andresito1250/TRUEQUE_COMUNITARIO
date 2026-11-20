@@ -3,12 +3,14 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { Salud } from '@trueque/shared';
+import { Publico } from '../comun/decoradores.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 const VERSION = process.env.npm_package_version ?? '0.1.0';
 
 /** RNF06: endpoint de disponibilidad para monitorear el servicio durante las pruebas. */
 @ApiTags('salud')
+@Publico()
 @SkipThrottle()
 @Controller({ path: 'health', version: VERSION_NEUTRAL })
 export class SaludController {
