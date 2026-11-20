@@ -81,6 +81,19 @@ export default function RootLayout() {
               options={{ headerShown: true, title: 'Editar publicación' }}
             />
             <Stack.Screen
+              name="propuesta/nueva"
+              options={{ headerShown: true, title: 'Proponer trueque' }}
+            />
+            <Stack.Screen name="propuesta/[id]" options={{ headerShown: true, title: 'Trueque' }} />
+            <Stack.Screen
+              name="propuesta/encuentro/[id]"
+              options={{ headerShown: true, title: 'Acordar el encuentro' }}
+            />
+            <Stack.Screen
+              name="propuesta/contrapropuesta/[id]"
+              options={{ headerShown: true, title: 'Proponer otro trato' }}
+            />
+            <Stack.Screen
               name="filtros"
               options={{ headerShown: true, title: 'Filtros', presentation: 'modal' }}
             />

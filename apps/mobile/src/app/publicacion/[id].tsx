@@ -143,8 +143,12 @@ function AccionesVisitante({ p }: { p: PublicacionDetalle }) {
   return (
     <View style={styles.acciones}>
       {p.estado === 'DISPONIBLE' ? (
-        // RF-14 se implementa en el Sprint 4.
-        <Boton titulo="Proponer trueque (muy pronto)" disabled />
+        <Boton
+          titulo="Proponer trueque"
+          onPress={() =>
+            router.push({ pathname: '/propuesta/nueva', params: { publicacionId: p.id } })
+          }
+        />
       ) : (
         <Aviso
           tipo="info"

@@ -315,7 +315,7 @@ describe('Módulo 4 · Gestión del trueque (e2e)', () => {
         accion(dani, p1.id, 'aceptar'),
         accion(dani, p2.id, 'aceptar'),
       ]);
-      expect([r1.status, r2.status].sort()).toEqual([200, 409]);
+      expect([r1.status, r2.status].sort((a, b) => a - b)).toEqual([200, 409]);
       expect(await estadoPub(radio)).toBe('RESERVADA');
     });
 
@@ -326,7 +326,7 @@ describe('Módulo 4 · Gestión del trueque (e2e)', () => {
         accion(dani, p.id, 'aceptar'),
         accion(dani, p.id, 'aceptar'),
       ]);
-      expect([r1.status, r2.status].sort()).toEqual([200, 409]);
+      expect([r1.status, r2.status].sort((a, b) => a - b)).toEqual([200, 409]);
     });
   });
 
