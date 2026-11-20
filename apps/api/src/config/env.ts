@@ -16,7 +16,8 @@ export const envSchema = z.object({
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('trueque'),
-  S3_PUBLIC_URL: z.string().optional(),
+  /** Si está vacía, el API sirve las imágenes en /api/v1/archivos (funciona con Expo Go en la red local). */
+  ARCHIVOS_URL_PUBLICA: z.string().default(''),
   CORS_ORIGINS: z.string().default('*'),
 });
 

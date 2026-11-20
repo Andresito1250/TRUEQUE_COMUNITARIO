@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
 import type { ActualizarPerfilDto, PerfilPrivado, PerfilPublico } from '@trueque/shared';
+import { AlmacenamientoService } from '../almacenamiento/almacenamiento.service.js';
+import { type ArchivoSubido, ImagenesService } from '../almacenamiento/imagenes.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { tokenAleatorio } from '../comun/cripto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -38,6 +40,8 @@ export class UsuariosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
+    private readonly almacenamiento: AlmacenamientoService,
+    private readonly imagenes: ImagenesService,
   ) {}
 
   /** Perfil completo del propio usuario (RF-05). */
@@ -93,6 +97,7 @@ export class UsuariosService {
       throw new UnauthorizedException('La contraseña no es correcta.');
     }
 
+    const fotoAnterior = u.fotoUrl;
     await this.prisma.$transaction(async (tx) => {
       await tx.usuario.update({
         where: { id },
@@ -124,6 +129,30 @@ export class UsuariosService {
         tx,
       );
     });
+    await this.almacenamiento.eliminar([fotoAnterior]);
+  }
+
+  /** RF-05: cambia la foto de perfil (se recorta cuadrada de 512 px). */
+  async cambiarFoto(id: string, archivo: ArchivoSubido | undefined): Promise<PerfilPrivado> {
+    if (!archivo) throw new BadRequestException('Selecciona una foto.');
+    const anterior = await this.prisma.usuario.findUniqueOrThrow({
+      where: { id },
+      select: { fotoUrl: true },
+    });
+    const clave = await this.imagenes.guardarFotoPerfil(id, archivo);
+    await this.prisma.usuario.update({ where: { id }, data: { fotoUrl: clave } });
+    await this.almacenamiento.eliminar([anterior.fotoUrl]);
+    return this.perfilPrivado(id);
+  }
+
+  async quitarFoto(id: string): Promise<PerfilPrivado> {
+    const anterior = await this.prisma.usuario.findUniqueOrThrow({
+      where: { id },
+      select: { fotoUrl: true },
+    });
+    await this.prisma.usuario.update({ where: { id }, data: { fotoUrl: null } });
+    await this.almacenamiento.eliminar([anterior.fotoUrl]);
+    return this.perfilPrivado(id);
   }
 
   private async armarPublico(u: {
@@ -153,7 +182,8 @@ export class UsuariosService {
       id: u.id,
       nombre: u.nombre,
       localidad: u.localidad,
-      fotoUrl: u.fotoUrl,
+      // En la base de datos se guarda la clave del archivo; aquí se convierte en URL.
+      fotoUrl: this.almacenamiento.url(u.fotoUrl),
       descripcion: u.descripcion,
       verificado: u.correoVerificado,
       miembroDesde: u.creadoEn.toISOString(),

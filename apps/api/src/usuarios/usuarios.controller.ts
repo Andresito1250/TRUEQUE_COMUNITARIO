@@ -1,5 +1,18 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   actualizarPerfilSchema,
   type ActualizarPerfilDto,
@@ -9,6 +22,7 @@ import {
   type PerfilPublico,
 } from '@trueque/shared';
 import { z } from 'zod';
+import { type ArchivoSubido, MAX_BYTES_IMAGEN } from '../almacenamiento/imagenes.service.js';
 import { UsuarioActual, type UsuarioSesion } from '../comun/decoradores.js';
 import { UsuariosService } from './usuarios.service.js';
 
@@ -31,6 +45,23 @@ export class UsuariosController {
     @Body({ schema: actualizarPerfilSchema }) dto: ActualizarPerfilDto,
   ): Promise<PerfilPrivado> {
     return this.usuarios.actualizar(u.id, dto);
+  }
+
+  @Post('me/foto')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'RF-05: cambiar mi foto de perfil (campo "foto")' })
+  @UseInterceptors(FileInterceptor('foto', { limits: { fileSize: MAX_BYTES_IMAGEN } }))
+  cambiarFoto(
+    @UsuarioActual() u: UsuarioSesion,
+    @UploadedFile() archivo: ArchivoSubido | undefined,
+  ): Promise<PerfilPrivado> {
+    return this.usuarios.cambiarFoto(u.id, archivo);
+  }
+
+  @Delete('me/foto')
+  @ApiOperation({ summary: 'RF-05: quitar mi foto de perfil' })
+  quitarFoto(@UsuarioActual() u: UsuarioSesion): Promise<PerfilPrivado> {
+    return this.usuarios.quitarFoto(u.id);
   }
 
   @Delete('me')

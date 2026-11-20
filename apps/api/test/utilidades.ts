@@ -49,6 +49,10 @@ export async function crearApp(): Promise<{
 
 /** Borra los usuarios de prueba (correos @e2e.test) y todo lo que dependa de ellos. */
 export async function limpiarUsuariosDePrueba(prisma: PrismaService) {
+  const deUsuariosDePrueba = {
+    OR: [{ correo: { endsWith: '@e2e.test' } }, { correo: { startsWith: 'eliminado-' } }],
+  };
+  await prisma.publicacion.deleteMany({ where: { usuario: deUsuariosDePrueba } });
   await prisma.registroAuditoria.deleteMany({
     where: { actor: { correo: { endsWith: '@e2e.test' } } },
   });
@@ -57,4 +61,30 @@ export async function limpiarUsuariosDePrueba(prisma: PrismaService) {
       OR: [{ correo: { endsWith: '@e2e.test' } }, { correo: { startsWith: 'eliminado-' } }],
     },
   });
+}
+
+/** Registra y verifica una cuenta; devuelve el encabezado de autorización y su id. */
+export async function cuentaDePrueba(
+  app: INestApplication<App>,
+  buzon: BuzonFalso,
+  correo: string,
+  localidad: 'SUBA' | 'KENNEDY' | 'TEUSAQUILLO' = 'SUBA',
+): Promise<{ auth: { Authorization: string }; id: string }> {
+  const { default: request } = await import('supertest');
+  await request(app.getHttpServer())
+    .post('/api/v1/auth/registro')
+    .send({
+      nombre: 'Persona de prueba',
+      correo,
+      contrasena: 'bogota2026',
+      localidad,
+      aceptaPoliticaDatos: true,
+      aceptaTerminos: true,
+    })
+    .expect(201);
+  const res = await request(app.getHttpServer())
+    .post('/api/v1/auth/verificar-correo')
+    .send({ correo, codigo: buzon.ultimoCodigo(correo) })
+    .expect(200);
+  return { auth: { Authorization: `Bearer ${res.body.accessToken}` }, id: res.body.usuario.id };
 }
