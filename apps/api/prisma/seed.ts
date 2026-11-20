@@ -1,13 +1,14 @@
 /**
- * Datos iniciales (idempotente): categorías y una cuenta de administrador.
- * Uso: npm run db:seed
- * Los usuarios y publicaciones de ejemplo se agregan en el Sprint 3.
+ * Datos iniciales (idempotente): categorías, una cuenta de administrador y los datos de ejemplo
+ * del piloto (10 vecinos y 30 publicaciones). Uso: npm run db:seed
+ * Para no sembrar los datos de ejemplo (p. ej. en el despliegue real): SEED_DEMO=false.
  */
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from '@node-rs/argon2';
 import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '@trueque/shared';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { sembrarDemo } from './demo.js';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? '' }),
@@ -61,6 +62,8 @@ async function main() {
       `  Contraseña por defecto "${contrasena}". Cámbiala con SEED_ADMIN_CONTRASENA fuera de tu PC.`,
     );
   }
+
+  if (process.env.SEED_DEMO !== 'false') await sembrarDemo(prisma);
 }
 
 main()

@@ -24,7 +24,7 @@ import {
   puntoParaGuardar,
   sqlPunto,
 } from '../comun/ubicacion.js';
-import type { EstadoPublicacion, Prisma } from '../generated/prisma/client.js';
+import type { EstadoPublicacion } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { aResumen, INCLUIR, type PublicacionCompleta } from './mapeo.js';
 import { UsuariosService } from '../usuarios/usuarios.service.js';
