@@ -19,6 +19,8 @@ export const envSchema = z.object({
   /** Si está vacía, el API sirve las imágenes en /api/v1/archivos (funciona con Expo Go en la red local). */
   ARCHIVOS_URL_PUBLICA: z.string().default(''),
   CORS_ORIGINS: z.string().default('*'),
+  /** Peticiones por minuto por IP (RNF09). Se sube solo para las pruebas de carga (RNF17). */
+  LIMITE_PETICIONES_MINUTO: z.coerce.number().int().positive().default(120),
 });
 
 export type Env = z.infer<typeof envSchema>;

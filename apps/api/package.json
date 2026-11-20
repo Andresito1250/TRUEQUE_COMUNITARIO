@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "test:cobertura": "vitest run --config ./vitest.config.cobertura.ts --coverage",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev && prisma generate",
     "db:deploy": "prisma migrate deploy",

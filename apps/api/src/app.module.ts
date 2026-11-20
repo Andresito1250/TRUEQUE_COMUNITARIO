@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
 import { AlmacenamientoModule } from './almacenamiento/almacenamiento.module.js';
@@ -8,7 +8,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { LimiteHttpGuard } from './comun/limite-http.guard.js';
 import { CategoriasModule } from './categorias/categorias.module.js';
-import { envSchema } from './config/env.js';
+import { type Env, envSchema } from './config/env.js';
 import { CorreoModule } from './correo/correo.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { PublicacionesModule } from './publicaciones/publicaciones.module.js';
@@ -23,9 +23,14 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validationSchema: envSchema }),
     // Límite general por IP; los endpoints de autenticación usan uno más estricto (RNF09).
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 120 }],
-      skipIf: () => process.env.NODE_ENV === 'test',
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => ({
+        throttlers: [
+          { ttl: 60_000, limit: config.get('LIMITE_PETICIONES_MINUTO', { infer: true }) },
+        ],
+        skipIf: () => process.env.NODE_ENV === 'test',
+      }),
     }),
     PrismaModule,
     AuditoriaModule,

@@ -14,7 +14,8 @@ Todo el stack es **gratuito** y la app se prueba con **Expo Go**, sin cuentas de
 apps/mobile       App Expo (React Native + TypeScript, Expo Router)
 apps/api          API NestJS + Prisma + PostgreSQL/PostGIS
 packages/shared   Enums, constantes y esquemas Zod compartidos
-docs/             Plan, trazabilidad RF/RNF → código, decisiones
+docs/             Plan, trazabilidad, decisiones, manual, base de datos y despliegue
+carga/            Prueba de carga con k6 (RNF17)
 docker/           Archivos de apoyo para docker-compose
 docker-compose.yml  Postgres+PostGIS, almacenamiento S3 (SeaweedFS) y correo (Mailpit)
 ```
@@ -71,8 +72,8 @@ npm run dev:mobile
 2. Ejecuta `npm run dev:mobile` y escanea el código QR:
    - **Android:** desde la app Expo Go.
    - **iPhone:** con la cámara del teléfono.
-3. La pestaña **Inicio** muestra la tarjeta "Conectado al servidor" si la app llega al API.
-4. Si dice "Sin conexión al servidor":
+3. Inicia sesión: la pestaña **Inicio** muestra las publicaciones cercanas si la app llega al API.
+4. Si aparece "No pudimos conectarnos":
    - Permite Node.js en el **Firewall de Windows** para redes privadas, o abre el puerto 3000:
      `netsh advfirewall firewall add rule name="Trueque API" dir=in action=allow protocol=TCP localport=3000` (PowerShell como administrador).
    - Verifica que la red Wi-Fi esté marcada como **privada** en Windows.
@@ -102,14 +103,15 @@ Contraseña de todos: `Vecino2026`. También existen `marcela`, `julian`, `carlo
 
 ## Scripts útiles
 
-| Comando                    | Qué hace                                        |
-| -------------------------- | ----------------------------------------------- |
-| `npm run lint`             | Lint de todos los paquetes                      |
-| `npm run typecheck`        | Verificación de tipos                           |
-| `npm test`                 | Pruebas unitarias (shared, API y app)           |
-| `npm run test:e2e -w api`  | Pruebas e2e del API (requiere la base de datos) |
-| `npm run db:studio -w api` | Explorador visual de la base de datos           |
-| `npm run infra:down`       | Detiene los contenedores                        |
+| Comando                         | Qué hace                                         |
+| ------------------------------- | ------------------------------------------------ |
+| `npm run lint`                  | Lint de todos los paquetes                       |
+| `npm run typecheck`             | Verificación de tipos                            |
+| `npm test`                      | Pruebas unitarias (shared, API y app)            |
+| `npm run test:e2e -w api`       | Pruebas e2e del API (requiere la base de datos)  |
+| `npm run test:cobertura -w api` | Cobertura del API (unitarias + e2e, mínimo 60 %) |
+| `npm run db:studio -w api`      | Explorador visual de la base de datos            |
+| `npm run infra:down`            | Detiene los contenedores                         |
 
 ## Builds para tiendas (opcional, más adelante)
 
@@ -120,3 +122,11 @@ Con EAS Build (`npx eas-cli@latest build`) se genera un APK de Android **gratis*
 - [docs/plan.md](docs/plan.md): arquitectura, modelo de datos, endpoints, pantallas y sprints.
 - [docs/trazabilidad.md](docs/trazabilidad.md): RF/RNF → archivos, endpoints y pruebas.
 - [docs/decisiones.md](docs/decisiones.md): decisiones técnicas y del equipo.
+- [docs/manual-usuario.md](docs/manual-usuario.md): manual para las personas del piloto y el administrador.
+- [docs/base-de-datos.md](docs/base-de-datos.md): diagrama entidad-relación (Mermaid), tablas e índices.
+- [docs/despliegue.md](docs/despliegue.md): cómo publicar el piloto gratis (túnel o Supabase + Render + Brevo + EAS Update).
+- [carga/README.md](carga/README.md): prueba de carga con 100 usuarios simultáneos.
+
+## Estado
+
+Los 8 sprints del plan están implementados: los 28 requerimientos funcionales y los no funcionales que dependen del código. El detalle de cada requerimiento está en [docs/trazabilidad.md](docs/trazabilidad.md). Lo que falta depende de las pruebas con usuarios: SUS (RNF02), tiempo de aprendizaje (RNF01) y la prueba de carga contra el servidor desplegado.

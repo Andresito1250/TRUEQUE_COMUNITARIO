@@ -201,6 +201,6 @@ Ver [decisiones.md](decisiones.md). Resumen:
 3. Todo gratis y con Expo Go: RF-21 queda como bandeja interna + avisos en tiempo real; sin push con la app cerrada.
 4. Sin cuenta de Apple: en iPhone se prueba con Expo Go; los builds instalables serán APK de Android.
 5. Mapas: Expo Go ya incluye Google Maps en Android, sin API key.
-6. Despliegue para las pruebas con usuarios: opciones gratuitas (Render/Railway + Neon, o túnel), se define en el Sprint 8.
+6. Despliegue para las pruebas con usuarios (Sprint 8, D34): túnel de Cloudflare para sesiones guiadas, o Supabase + Render + Brevo + EAS Update para el piloto. Ver [despliegue.md](despliegue.md).
 7. Varias propuestas por publicación; al aceptar una, las demás se bloquean (D3).
 8. Una sola parte marca el trueque como hecho y queda cerrado para ambas (D4).

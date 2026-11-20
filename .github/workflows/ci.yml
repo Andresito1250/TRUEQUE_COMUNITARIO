@@ -46,4 +46,4 @@ jobs:
         working-directory: apps/api
         run: |
           npx prisma migrate deploy
-          npm run test:e2e
+          npm run test:cobertura
