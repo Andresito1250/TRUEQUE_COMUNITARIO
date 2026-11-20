@@ -53,7 +53,11 @@ export default function DetallePublicacionScreen() {
   }
 
   return (
-    <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={styles.pie}>
+    <ScrollView
+      style={{ backgroundColor: theme.background }}
+      contentContainerStyle={styles.pie}
+      contentInsetAdjustmentBehavior="automatic"
+    >
       <Stack.Screen options={{ title: TIPO_NOMBRE[p.tipo] }} />
       <Carrusel imagenes={p.imagenes} titulo={p.titulo} />
       <View style={styles.contenido}>

@@ -46,6 +46,11 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
+            // Encabezado opaco: sin fondo, iOS lo dibuja translúcido encima del contenido y tapa
+            // lo primero de cada pantalla (filtros, campos del formulario).
+            headerTransparent: false,
+            headerStyle: { backgroundColor: colores.background },
+            headerShadowVisible: false,
             headerBackButtonDisplayMode: 'minimal',
             headerTintColor: colores.primary,
             headerTitleStyle: { color: colores.text },
