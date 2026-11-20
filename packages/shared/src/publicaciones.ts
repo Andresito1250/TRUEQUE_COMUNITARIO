@@ -105,4 +105,6 @@ export type PublicacionDetalle = PublicacionResumen & {
   oferente: PerfilPublico;
   /** true si la publicación es del usuario que consulta. */
   esMia: boolean;
+  /** RF-13: distancia redondeada desde quien consulta; null si la publicación es suya. */
+  distanciaM: number | null;
 };

@@ -8,25 +8,26 @@ import {
 import {
   type ActualizarPublicacionDto,
   type CambiarEstadoPublicacionDto,
+  type Coordenadas,
   type CrearPublicacionDto,
   LIMITES,
   type PublicacionDetalle,
   type PublicacionResumen,
+  redondearDistancia,
 } from '@trueque/shared';
 import { AlmacenamientoService } from '../almacenamiento/almacenamiento.service.js';
 import { type ArchivoSubido, ImagenesService } from '../almacenamiento/imagenes.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
-import { guardarUbicacionPublicacion, puntoParaGuardar } from '../comun/ubicacion.js';
+import {
+  guardarUbicacionPublicacion,
+  origenDeConsulta,
+  puntoParaGuardar,
+  sqlPunto,
+} from '../comun/ubicacion.js';
 import type { EstadoPublicacion, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { aResumen, INCLUIR, type PublicacionCompleta } from './mapeo.js';
 import { UsuariosService } from '../usuarios/usuarios.service.js';
-
-const INCLUIR = {
-  categoria: { select: { id: true, nombre: true, icono: true } },
-  imagenes: { orderBy: { orden: 'asc' } },
-} satisfies Prisma.PublicacionInclude;
-
-type PublicacionCompleta = Prisma.PublicacionGetPayload<{ include: typeof INCLUIR }>;
 
 const ACTIVAS: EstadoPublicacion[] = ['DISPONIBLE', 'RESERVADA', 'OCULTA'];
 const HISTORICAS: EstadoPublicacion[] = ['INTERCAMBIADA'];
@@ -78,8 +79,11 @@ export class PublicacionesService {
     return this.detalle(creada.id, usuarioId);
   }
 
-  /** RF-13 (base): detalle con fotos y perfil público del oferente. */
-  async detalle(id: string, usuarioId: string): Promise<PublicacionDetalle> {
+  /**
+   * RF-13: detalle con fotos, perfil público del oferente y distancia aproximada desde quien
+   * consulta (su ubicación actual si la envía, o el centro de su localidad).
+   */
+  async detalle(id: string, usuarioId: string, origen?: Coordenadas): Promise<PublicacionDetalle> {
     const p = await this.prisma.publicacion.findUnique({ where: { id }, include: INCLUIR });
     const esMia = p?.usuarioId === usuarioId;
     if (!p || p.estado === 'ELIMINADA' || (p.estado === 'OCULTA' && !esMia)) {
@@ -96,7 +100,27 @@ export class PublicacionesService {
       })),
       oferente: await this.usuarios.perfilPublico(p.usuarioId),
       esMia,
+      distanciaM: esMia ? null : await this.distancia(id, usuarioId, origen),
     };
+  }
+
+  private async distancia(
+    id: string,
+    usuarioId: string,
+    origen?: Coordenadas,
+  ): Promise<number | null> {
+    let punto = origen;
+    if (!punto) {
+      const u = await this.prisma.usuario.findUniqueOrThrow({
+        where: { id: usuarioId },
+        select: { localidad: true },
+      });
+      punto = origenDeConsulta(undefined, undefined, u.localidad);
+    }
+    const [fila] = await this.prisma.$queryRaw<{ metros: number | null }[]>`
+      SELECT ST_Distance(ubicacion, ${sqlPunto(punto)}) AS metros
+      FROM "Publicacion" WHERE id = ${id}::uuid`;
+    return fila?.metros == null ? null : redondearDistancia(fila.metros);
   }
 
   /** RF-09: publicaciones propias, activas o históricas. */
@@ -223,17 +247,7 @@ export class PublicacionesService {
   }
 
   private resumen(p: PublicacionCompleta): PublicacionResumen {
-    return {
-      id: p.id,
-      titulo: p.titulo,
-      tipo: p.tipo,
-      estado: p.estado,
-      estadoConservacion: p.estadoConservacion,
-      localidad: p.localidad,
-      categoria: p.categoria,
-      miniaturaUrl: this.almacenamiento.url(p.imagenes[0]?.miniaturaUrl ?? null),
-      fechaPublicacion: p.fechaPublicacion.toISOString(),
-    };
+    return aResumen(p, this.almacenamiento);
   }
 
   private async propia(id: string, usuarioId: string) {

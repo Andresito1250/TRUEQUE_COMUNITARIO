@@ -4,3 +4,4 @@ export * from './salud.js';
 export * from './auth.js';
 export * from './geo.js';
 export * from './publicaciones.js';
+export * from './busqueda.js';

@@ -16,6 +16,8 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   actualizarPublicacionSchema,
+  type Busqueda,
+  busquedaSchema,
   type ActualizarPublicacionDto,
   cambiarEstadoPublicacionSchema,
   type CambiarEstadoPublicacionDto,
@@ -23,12 +25,16 @@ import {
   type CrearPublicacionDto,
   filtroMisPublicacionesSchema,
   LIMITES,
+  origenDetalleSchema,
+  origenValido,
   type PublicacionDetalle,
   type PublicacionResumen,
+  type ResultadoBusqueda,
 } from '@trueque/shared';
 import { z } from 'zod';
 import { type ArchivoSubido, MAX_BYTES_IMAGEN } from '../almacenamiento/imagenes.service.js';
 import { UsuarioActual, type UsuarioSesion } from '../comun/decoradores.js';
+import { BusquedaService } from './busqueda.service.js';
 import { PublicacionesService } from './publicaciones.service.js';
 
 const idSchema = z.uuid('Publicación no válida');
@@ -37,7 +43,10 @@ const idSchema = z.uuid('Publicación no válida');
 @ApiBearerAuth()
 @Controller()
 export class PublicacionesController {
-  constructor(private readonly publicaciones: PublicacionesService) {}
+  constructor(
+    private readonly publicaciones: PublicacionesService,
+    private readonly busqueda: BusquedaService,
+  ) {}
 
   @Post('publicaciones')
   @ApiOperation({ summary: 'RF-06: publicar un bien o servicio' })
@@ -46,6 +55,19 @@ export class PublicacionesController {
     @Body({ schema: crearPublicacionSchema }) dto: CrearPublicacionDto,
   ): Promise<PublicacionDetalle> {
     return this.publicaciones.crear(u.id, dto);
+  }
+
+  @Get('publicaciones')
+  @ApiOperation({
+    summary: 'RF-10 a RF-12: buscar publicaciones por palabra, filtros y cercanía',
+    description:
+      'Sin `radioKm` busca en toda la ciudad. Sin `lat`/`lng` mide desde el centro de la localidad del usuario.',
+  })
+  buscar(
+    @UsuarioActual() u: UsuarioSesion,
+    @Query({ schema: busquedaSchema }) b: Busqueda,
+  ): Promise<ResultadoBusqueda> {
+    return this.busqueda.buscar(u.id, b);
   }
 
   @Get('usuarios/me/publicaciones')
@@ -62,8 +84,9 @@ export class PublicacionesController {
   detalle(
     @UsuarioActual() u: UsuarioSesion,
     @Param('id', { schema: idSchema }) id: string,
+    @Query({ schema: origenDetalleSchema }) q: { lat?: number; lng?: number },
   ): Promise<PublicacionDetalle> {
-    return this.publicaciones.detalle(id, u.id);
+    return this.publicaciones.detalle(id, u.id, origenValido(q.lat, q.lng) ?? undefined);
   }
 
   @Patch('publicaciones/:id')
