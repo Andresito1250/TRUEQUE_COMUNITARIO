@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
@@ -48,13 +49,14 @@ export async function comprimir(uri: string, ancho = 0, alto = 0): Promise<strin
   return guardada.uri;
 }
 
-/** Arma el cuerpo multipart con las fotos locales. */
+/**
+ * Arma el cuerpo multipart con las fotos locales.
+ * Desde Expo SDK 58 el `fetch` global es `expo/fetch`, que no acepta el formato antiguo
+ * `{ uri, name, type }`: los archivos deben ir como `File` de expo-file-system.
+ */
 export function formularioConFotos(campo: string, uris: string[]): FormData {
   const datos = new FormData();
-  uris.forEach((uri, i) => {
-    // React Native acepta este objeto como archivo dentro de FormData.
-    datos.append(campo, { uri, name: `foto-${i}.jpg`, type: 'image/jpeg' } as unknown as Blob);
-  });
+  for (const uri of uris) datos.append(campo, new File(uri));
   return datos;
 }
 

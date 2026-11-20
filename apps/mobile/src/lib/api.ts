@@ -85,7 +85,9 @@ export async function pedir<T>(
       const nuevo = await proveedor.renovar();
       if (nuevo) res = await ejecutar(nuevo);
     }
-  } catch {
+  } catch (e) {
+    // En desarrollo se muestra la causa real en la terminal de Metro.
+    if (__DEV__) console.warn(`[api] ${init.method ?? 'GET'} ${ruta} falló:`, e);
     throw new ErrorApi(0, SIN_CONEXION);
   }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
@@ -13,7 +13,12 @@ type PantallaProps = {
   bordeSuperior?: boolean;
 };
 
-/** Contenedor base: respeta áreas seguras, sube con el teclado y usa el fondo del tema. */
+/**
+ * Contenedor base: respeta áreas seguras y el encabezado, y deja ver el campo activo cuando
+ * aparece el teclado. En iOS esto lo hace el propio ScrollView (`automaticallyAdjustKeyboardInsets`
+ * y `contentInsetAdjustmentBehavior`); un KeyboardAvoidingView aquí empujaba el contenido
+ * hacia arriba y dejaba los primeros campos fuera de alcance.
+ */
 export function Pantalla({ children, scroll = true, bordeSuperior = true }: PantallaProps) {
   const theme = useTheme();
   return (
@@ -21,18 +26,20 @@ export function Pantalla({ children, scroll = true, bordeSuperior = true }: Pant
       style={[styles.flex, { backgroundColor: theme.background }]}
       edges={bordeSuperior ? ['top'] : []}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {scroll ? (
-          <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
-        ) : (
-          <View style={[styles.flex, styles.contenido]}>{children}</View>
-        )}
-      </KeyboardAvoidingView>
+      {scroll ? (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.contenido}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+          contentInsetAdjustmentBehavior={bordeSuperior ? 'never' : 'automatic'}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={[styles.flex, styles.contenido]}>{children}</View>
+      )}
     </SafeAreaView>
   );
 }

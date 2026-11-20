@@ -6,6 +6,20 @@ import { AlmacenamientoService } from './almacenamiento.service.js';
 export const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MAX_BYTES_IMAGEN = 10 * 1024 * 1024;
 
+/** Reconoce JPEG, PNG y WEBP por su firma de bytes. */
+export function detectarTipoImagen(b: Buffer): (typeof TIPOS_IMAGEN)[number] | null {
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
+    return 'image/png';
+  if (
+    b.length >= 12 &&
+    b.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    b.subarray(8, 12).toString('ascii') === 'WEBP'
+  )
+    return 'image/webp';
+  return null;
+}
+
 /** Archivo recibido por multer (solo los campos que se usan). */
 export type ArchivoSubido = { buffer: Buffer; mimetype: string; size: number };
 
@@ -18,8 +32,12 @@ export type ArchivoSubido = { buffer: Buffer; mimetype: string; size: number };
 export class ImagenesService {
   constructor(private readonly almacenamiento: AlmacenamientoService) {}
 
+  /**
+   * Se revisan los primeros bytes del archivo en vez de confiar en el tipo que declara el
+   * cliente (algunos celulares lo envían vacío o como application/octet-stream).
+   */
   validar(archivo: ArchivoSubido): void {
-    if (!TIPOS_IMAGEN.includes(archivo.mimetype as (typeof TIPOS_IMAGEN)[number])) {
+    if (!detectarTipoImagen(archivo.buffer)) {
       throw new BadRequestException('Solo se permiten fotos JPG, PNG o WEBP.');
     }
     if (archivo.size > MAX_BYTES_IMAGEN) {
