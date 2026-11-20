@@ -9,12 +9,14 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useSalud } from '@/hooks/use-salud';
 import { useTheme } from '@/hooks/use-theme';
 import { API_URL, mensajeDeError } from '@/lib/api';
+import { useSesion } from '@/store/sesion';
 
 /** Inicio — "Cerca de mí". En el Sprint 3 mostrará las publicaciones cercanas (RF-12). */
 export default function InicioScreen() {
+  const nombre = useSesion((s) => s.usuario?.nombre.split(' ')[0]);
   return (
     <Pantalla>
-      <Texto variante="titulo">Cerca de ti</Texto>
+      <Texto variante="titulo">{nombre ? `¡Hola, ${nombre}!` : 'Cerca de ti'}</Texto>
       <EstadoConexion />
       <EstadoVacio
         icono="leaf-outline"

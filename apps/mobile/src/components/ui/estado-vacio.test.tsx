@@ -15,7 +15,7 @@ describe('EstadoVacio', () => {
     );
     expect(screen.getByText('Sin publicaciones')).toBeTruthy();
     expect(screen.getByText('Publica lo primero')).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Publicar' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

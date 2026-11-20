@@ -1,15 +1,32 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/query-client';
+import { useSesion } from '@/store/sesion';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   const colores = Colors[scheme];
+  const listo = useSesion((s) => s.listo);
+  const conSesion = useSesion((s) => s.usuario !== null);
+
+  useEffect(() => {
+    void useSesion.getState().restaurar();
+  }, []);
+
+  useEffect(() => {
+    if (listo) SplashScreen.hideAsync().catch(() => undefined);
+  }, [listo]);
+
+  if (!listo) return null;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -26,8 +43,43 @@ export default function RootLayout() {
           },
         }}
       >
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            headerBackButtonDisplayMode: 'minimal',
+            headerTintColor: colores.primary,
+            headerTitleStyle: { color: colores.text },
+          }}
+        >
+          {/* Sin sesión: bienvenida, registro e inicio de sesión. */}
+          <Stack.Protected guard={!conSesion}>
+            <Stack.Screen name="(auth)" />
+          </Stack.Protected>
+          {/* Con sesión: pestañas y ajustes. */}
+          <Stack.Protected guard={conSesion}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="ajustes/perfil"
+              options={{ headerShown: true, title: 'Editar perfil' }}
+            />
+            <Stack.Screen
+              name="ajustes/seguridad"
+              options={{ headerShown: true, title: 'Seguridad' }}
+            />
+            <Stack.Screen
+              name="ajustes/privacidad"
+              options={{ headerShown: true, title: 'Privacidad y datos' }}
+            />
+          </Stack.Protected>
+          {/* Siempre disponibles. */}
+          <Stack.Screen
+            name="legal/politica"
+            options={{ headerShown: true, title: 'Política de datos' }}
+          />
+          <Stack.Screen
+            name="legal/terminos"
+            options={{ headerShown: true, title: 'Términos de uso' }}
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
