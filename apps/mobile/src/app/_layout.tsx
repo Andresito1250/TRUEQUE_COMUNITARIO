@@ -19,6 +19,7 @@ export default function RootLayout() {
   const colores = Colors[scheme];
   const listo = useSesion((s) => s.listo);
   const conSesion = useSesion((s) => s.usuario !== null);
+  const esAdmin = useSesion((s) => s.usuario?.rol === 'ADMIN');
 
   useEffect(() => {
     void useSesion.getState().restaurar();
@@ -112,6 +113,33 @@ export default function RootLayout() {
             <Stack.Screen
               name="mis-publicaciones"
               options={{ headerShown: true, title: 'Mis publicaciones' }}
+            />
+          </Stack.Protected>
+          {/* Solo administradores (Módulo 7). El API también lo exige. */}
+          <Stack.Protected guard={esAdmin}>
+            <Stack.Screen
+              name="admin/index"
+              options={{ headerShown: true, title: 'Administración' }}
+            />
+            <Stack.Screen
+              name="admin/reportes"
+              options={{ headerShown: true, title: 'Reportes' }}
+            />
+            <Stack.Screen
+              name="admin/usuarios"
+              options={{ headerShown: true, title: 'Usuarios' }}
+            />
+            <Stack.Screen
+              name="admin/indicadores"
+              options={{ headerShown: true, title: 'Indicadores' }}
+            />
+            <Stack.Screen
+              name="admin/categorias"
+              options={{ headerShown: true, title: 'Categorías' }}
+            />
+            <Stack.Screen
+              name="admin/auditoria"
+              options={{ headerShown: true, title: 'Auditoría' }}
             />
           </Stack.Protected>
           {/* Siempre disponibles. */}

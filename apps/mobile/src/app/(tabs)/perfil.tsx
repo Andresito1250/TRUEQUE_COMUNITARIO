@@ -100,6 +100,14 @@ export default function PerfilScreen() {
       />
 
       <View>
+        {perfil.rol === 'ADMIN' ? (
+          <FilaMenu
+            icono="construct-outline"
+            titulo="Administración"
+            detalle="Reportes, usuarios, indicadores y categorías"
+            onPress={() => router.push('/admin')}
+          />
+        ) : null}
         <FilaMenu
           icono="albums-outline"
           titulo="Mis publicaciones"
