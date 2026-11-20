@@ -9,3 +9,4 @@ export * from './trueques.js';
 export * from './notificaciones.js';
 export * from './mensajes.js';
 export * from './confianza.js';
+export * from './admin.js';

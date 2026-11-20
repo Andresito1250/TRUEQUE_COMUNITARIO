@@ -500,6 +500,56 @@ export class TruequesService {
     };
   }
 
+  /**
+   * Moderación (RF-25, RF-26): cancela las propuestas pendientes y los trueques en curso que
+   * cumplan `donde`, libera los artículos reservados y avisa a las partes indicadas.
+   */
+  async cancelarAbiertas(
+    tx: Tx,
+    donde: Prisma.PropuestaTruequeWhereInput,
+    motivo: string,
+    avisarA: (p: { proponenteId: string; receptorId: string }) => string[],
+  ) {
+    const abiertas = await tx.propuestaTrueque.findMany({
+      where: { ...donde, estado: { in: [...ESTADOS_PENDIENTES, ...ESTADOS_EN_CURSO] } },
+      select: {
+        id: true,
+        estado: true,
+        proponenteId: true,
+        receptorId: true,
+        articulos: { select: { publicacionId: true } },
+      },
+    });
+    if (!abiertas.length) return [];
+    await tx.propuestaTrueque.updateMany({
+      where: { id: { in: abiertas.map((a) => a.id) } },
+      data: { estado: 'CANCELADA', motivoCierre: motivo },
+    });
+    await tx.publicacion.updateMany({
+      where: {
+        estado: 'RESERVADA',
+        id: {
+          in: abiertas
+            .filter((a) => ESTADOS_EN_CURSO.includes(a.estado))
+            .flatMap((a) => a.articulos.map((x) => x.publicacionId)),
+        },
+      },
+      data: { estado: 'DISPONIBLE' },
+    });
+    return this.notificaciones.crear(
+      abiertas.flatMap((a) =>
+        avisarA(a).map((usuarioId) => ({
+          usuarioId,
+          tipo: 'TRUEQUE_CANCELADO' as const,
+          titulo: 'Se canceló un trueque',
+          mensaje: motivo,
+          ruta: ruta(a.id),
+        })),
+      ),
+      tx,
+    );
+  }
+
   /** Cierra las propuestas abiertas de una publicación que su dueño eliminó. */
   async cerrarPorPublicacionEliminada(tx: Tx, publicacionId: string, duenoId: string) {
     const abiertas = await tx.propuestaTrueque.findMany({

@@ -144,6 +144,11 @@ export class TiempoRealGateway implements OnGatewayConnection, OnModuleDestroy {
     });
   }
 
+  /** RF-26: al suspender una cuenta se cierran sus conexiones abiertas. */
+  desconectarUsuario(usuarioId: string) {
+    this.servidor?.in(salaUsuario(usuarioId)).disconnectSockets(true);
+  }
+
   /** También se usa cuando el mensaje llega por REST. */
   difundir(m: MensajeChat, destinatarioId: string) {
     this.servidor

@@ -8,5 +8,6 @@ import { TiempoRealGateway } from './tiempo-real.gateway.js';
   imports: [AuthModule],
   controllers: [MensajesController],
   providers: [MensajesService, TiempoRealGateway],
+  exports: [TiempoRealGateway],
 })
 export class MensajesModule {}

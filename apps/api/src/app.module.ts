@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AdminModule } from './admin/admin.module.js';
 import { AlmacenamientoModule } from './almacenamiento/almacenamiento.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -39,6 +40,7 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
     TruequesModule,
     MensajesModule,
     ReportesModule,
+    AdminModule,
   ],
   // El límite de peticiones va primero para frenar abusos antes de validar tokens.
   providers: [{ provide: APP_GUARD, useClass: LimiteHttpGuard }],
