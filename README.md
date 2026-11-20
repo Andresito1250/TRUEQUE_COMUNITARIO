@@ -84,6 +84,17 @@ En tu PC **los correos no llegan a Gmail ni a ningún buzón real**: los recibe 
 
 Cuenta de administrador creada por el seed (solo para desarrollo): `admin@trueque.local` / `Admin2026`.
 
+El seed también crea **10 vecinos de ejemplo** con 30 publicaciones en Suba, Kennedy y Teusaquillo (las imágenes dicen «Imagen de ejemplo»). Puedes entrar con cualquiera de ellos para probar la búsqueda desde otra cuenta:
+
+| Correo                      | Localidad   |
+| --------------------------- | ----------- |
+| `laura@demo.trueque.local`  | Suba        |
+| `andres@demo.trueque.local` | Suba        |
+| `diana@demo.trueque.local`  | Kennedy     |
+| `felipe@demo.trueque.local` | Teusaquillo |
+
+Contraseña de todos: `Vecino2026`. También existen `marcela`, `julian`, `carlos`, `sofia`, `patricia` y `mateo`. Para no crearlos: `SEED_DEMO=false npm run db:seed`.
+
 ### Limitaciones de Expo Go
 
 - No hay **notificaciones push** con la app cerrada; Expo las retiró de Expo Go. La app usa una bandeja de notificaciones interna y avisos en tiempo real mientras está abierta (RF-21).
